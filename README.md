@@ -1,2 +1,2 @@
-# Ai-assistant
+# AI-Career-Assistant
 DHA SUFFA UNIVERSITY HACKATHON 2026
