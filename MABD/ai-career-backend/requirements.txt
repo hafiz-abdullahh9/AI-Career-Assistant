@@ -1,0 +1,10 @@
+fastapi
+uvicorn
+python-dotenv
+sqlmodel
+aiosqlite
+openai
+google-genai
+httpx
+pydantic-settings
+psycopg2-binary
