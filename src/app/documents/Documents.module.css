@@ -1,0 +1,247 @@
+.container {
+  max-width: 1400px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.titleSection h1 {
+  font-family: 'Outfit', sans-serif;
+  font-size: 32px;
+  font-weight: 800;
+  background: linear-gradient(135deg, #fff 40%, var(--primary) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.titleSection p {
+  color: var(--text-secondary);
+  font-size: 14px;
+  margin-top: 4px;
+}
+
+.headerActions {
+  display: flex;
+  gap: 12px;
+}
+
+/* Tabs System */
+.tabRow {
+  display: flex;
+  gap: 12px;
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 2px;
+  margin-bottom: 8px;
+}
+
+.tabBtn {
+  padding: 10px 20px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  border-radius: 8px 8px 0 0;
+  position: relative;
+  transition: all 0.2s;
+}
+
+.tabBtnActive {
+  color: var(--primary);
+  background: rgba(99, 102, 241, 0.05);
+}
+
+.tabBtnActive::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background: var(--primary);
+  box-shadow: 0 0 10px var(--primary);
+}
+
+/* Comparison Layout */
+.compareLayout {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+}
+
+@media (max-width: 900px) {
+  .compareLayout {
+    grid-template-columns: 1fr;
+  }
+}
+
+.cvPanel {
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.panelHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 12px;
+}
+
+.panelTitle {
+  font-family: 'Outfit', sans-serif;
+  font-weight: 700;
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.badge {
+  font-size: 10px;
+  padding: 3px 8px;
+  border-radius: 99px;
+  font-weight: 600;
+}
+
+.originalBadge {
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text-secondary);
+}
+
+.optimizedBadge {
+  background: rgba(20, 184, 166, 0.1);
+  color: var(--secondary);
+  border: 1px solid rgba(20, 184, 166, 0.2);
+}
+
+/* Simulated Resume Sheets */
+.resumeSheet {
+  background: rgba(5, 7, 16, 0.8);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 32px;
+  color: #d1d5db;
+  font-family: var(--font-sans);
+  min-height: 550px;
+  overflow-y: auto;
+  box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.5);
+}
+
+.resumeTitle {
+  font-family: 'Outfit', sans-serif;
+  font-size: 20px;
+  font-weight: 800;
+  color: var(--text-primary);
+  text-align: center;
+  margin-bottom: 4px;
+}
+
+.resumeMeta {
+  font-size: 11px;
+  text-align: center;
+  color: var(--text-muted);
+  margin-bottom: 24px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  padding-bottom: 12px;
+}
+
+.resumeSectionTitle {
+  font-family: 'Outfit', sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--primary);
+  margin-bottom: 8px;
+  margin-top: 16px;
+}
+
+.resumeSection {
+  margin-bottom: 16px;
+}
+
+.resumeItemTitle {
+  display: flex;
+  justify-content: space-between;
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--text-primary);
+  margin-bottom: 4px;
+}
+
+.resumeBullets {
+  padding-left: 16px;
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.resumeBullets li {
+  margin-bottom: 6px;
+}
+
+/* Diff highlights */
+.diffAdded {
+  background: rgba(16, 185, 129, 0.15);
+  color: #10b981;
+  border-left: 2px solid var(--success);
+  padding-left: 6px;
+}
+
+.diffRemoved {
+  color: var(--text-muted);
+  text-decoration: line-through;
+  opacity: 0.5;
+}
+
+/* Cover Letter Layout */
+.coverLetterCard {
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.coverLetterEditor {
+  background: rgba(5, 7, 16, 0.8);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 32px;
+  color: #d1d5db;
+  font-family: var(--font-sans);
+  font-size: 13px;
+  line-height: 1.6;
+  min-height: 480px;
+  resize: vertical;
+  width: 100%;
+}
+
+.coverLetterEditor:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 12px var(--primary-glow);
+}
+
+.saveCoverLetterBtn {
+  background: var(--primary);
+  color: var(--text-primary);
+  font-weight: 600;
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-size: 14px;
+  align-self: flex-end;
+  transition: all 0.2s;
+}
+
+.saveCoverLetterBtn:hover {
+  background: #4f46e5;
+  box-shadow: 0 0 12px rgba(99, 102, 241, 0.4);
+}
