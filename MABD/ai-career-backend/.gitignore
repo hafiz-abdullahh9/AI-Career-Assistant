@@ -1,0 +1,21 @@
+# Environment variables & secrets (CRITICAL)
+.env
+.env.*
+
+# Local Database files
+*.db
+*.db-journal
+
+# Python virtual environment
+venv/
+ENV/
+env/
+
+# Python Cache & compiled files
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Log files
+*.log
