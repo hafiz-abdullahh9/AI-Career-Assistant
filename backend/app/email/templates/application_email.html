@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            font-size: 14px;
+            line-height: 1.6;
+            color: #333333;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .content {
+            margin-bottom: 20px;
+        }
+        .signature {
+            font-weight: bold;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="content">
+            <p>Dear {{ contact_name }},</p>
+            <p>Please find attached my application for the <strong>{{ role_title }}</strong> position at <strong>{{ company_name }}</strong>.</p>
+            
+            {% if custom_message %}
+            <p>{{ custom_message }}</p>
+            {% else %}
+            <p>I am very interested in this role and believe my background makes me a strong fit for your team. I have attached my resume for your review.</p>
+            {% endif %}
+        </div>
+        <div class="signature">
+            <p>Sincerely,</p>
+            <p>{{ candidate_name }}</p>
+        </div>
+    </div>
+</body>
+</html>

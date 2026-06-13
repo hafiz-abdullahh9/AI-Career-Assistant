@@ -1,0 +1,27 @@
+{
+  "name": "Greenhouse",
+  "supported_domains": ["greenhouse.io", "boards.greenhouse.io"],
+  "selectors": {
+    "first_name": "css:#first_name",
+    "last_name": "css:#last_name",
+    "email": "css:#email",
+    "phone": "css:#phone",
+    "resume": "css:input[type='file'][id='resume']",
+    "cover_letter": "css:input[type='file'][id='cover_letter']",
+    "linkedin": "css:#job_application_answers_attributes_0_text_value",
+    "website": "css:#job_application_answers_attributes_1_text_value"
+  },
+  "required_fields": ["first_name", "last_name", "email"],
+  "submit_button": "css:#submit_app",
+  "success_indicators": [
+    "thank you",
+    "application submitted",
+    "success",
+    "confirmation",
+    "received"
+  ],
+  "confirmation_extraction": {
+    "selectors": ["#confirmation-code", ".confirmation-id"],
+    "regex": "(CONF-[0-9]+|CONF[0-9]+|Confirmation\\s+(?:ID|Code|Number|#)\\s*:\\s*([A-Za-z0-9\\-]+))"
+  }
+}

@@ -1,0 +1,434 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# CI Pipeline — Application Automation Agent
+#
+# Stages (in dependency order):
+#   1. lint          → ruff + black --check + isort --check-only
+#   2. unit-tests    → pytest tests/unit (fully mocked, no services)
+#   3. integration   → pytest tests/integration (real postgres + redis)
+#   4. migrate-check → alembic upgrade head + verify_rbac.py
+#   5. docker-build  → smoke-build both API and worker images
+#
+# Triggers:
+#   - push to main or develop
+#   - any pull request targeting main
+# ─────────────────────────────────────────────────────────────────────────────
+
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+env:
+  PYTHON_VERSION: "3.12"
+  # Shared test database config (used by integration + migrate jobs)
+  POSTGRES_USER: postgres
+  POSTGRES_PASSWORD: postgres
+  POSTGRES_DB: automation_test_db
+  POSTGRES_PORT: 5432
+  REDIS_PORT: 6379
+
+# Cancel redundant in-progress runs on the same branch
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # Job 1: Lint
+  # Fast — runs with no services, blocks all other jobs on failure.
+  # ─────────────────────────────────────────────────────────────────────────
+  lint:
+    name: Lint (ruff + black + isort)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ env.PYTHON_VERSION }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+
+      - name: Install lint dependencies
+        working-directory: Member_04_Application_Automation
+        run: |
+          pip install --upgrade pip
+          pip install ruff==0.8.4 black==24.10.0 isort==5.13.2
+
+      - name: ruff — lint
+        working-directory: Member_04_Application_Automation
+        run: ruff check . --output-format=github
+
+      - name: ruff — format check
+        working-directory: Member_04_Application_Automation
+        run: ruff format --check .
+
+      - name: black — format check
+        working-directory: Member_04_Application_Automation
+        run: black --check --diff .
+
+      - name: isort — import order check
+        working-directory: Member_04_Application_Automation
+        run: isort --check-only --diff .
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # Job 2: Unit Tests
+  # No real services — runs against mocked DB and Redis.
+  # Fast feedback loop; must pass before integration tests run.
+  # ─────────────────────────────────────────────────────────────────────────
+  unit-tests:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: lint
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ env.PYTHON_VERSION }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+
+      - name: Install dependencies
+        working-directory: Member_04_Application_Automation
+        run: |
+          pip install --upgrade pip
+          pip install -e ".[dev]"
+
+      - name: Run unit tests
+        working-directory: Member_04_Application_Automation
+        env:
+          # Minimal env so settings load without a real .env file
+          APP_ENV: test
+          APP_NAME: automation-agent-test
+          APP_VERSION: 0.0.0-test
+          DEBUG: "false"
+          LOG_LEVEL: WARNING
+          DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/automation_test_db
+          REDIS_URL: redis://localhost:6379/0
+          CELERY_BROKER_URL: redis://localhost:6379/1
+          CELERY_RESULT_BACKEND: redis://localhost:6379/2
+          JWT_SECRET_KEY: ci-test-secret-key-not-for-production
+          INTERNAL_SERVICE_SECRET: ci-test-internal-secret
+          ORCHESTRATOR_WEBHOOK_URL: http://localhost:8000/api/v1/webhooks/automation-result
+          ORCHESTRATOR_WEBHOOK_SECRET: ci-test-webhook-secret
+        run: |
+          pytest tests/unit \
+            -m "unit or not integration and not selenium and not load" \
+            --tb=short \
+            --junitxml=test-results/unit.xml \
+            -v
+
+      - name: Upload unit test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: unit-test-results
+          path: Member_04_Application_Automation/test-results/unit.xml
+          retention-days: 14
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # Job 3: Integration Tests
+  # Runs against real postgres + redis services.
+  # Uses pytest -m integration to target only integration-marked tests.
+  # ─────────────────────────────────────────────────────────────────────────
+  integration-tests:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    needs: unit-tests
+
+    services:
+      postgres:
+        image: postgres:16.3-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: automation_test_db
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d automation_test_db"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      redis:
+        image: redis:7.2-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ env.PYTHON_VERSION }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+
+      - name: Install dependencies
+        working-directory: Member_04_Application_Automation
+        run: |
+          pip install --upgrade pip
+          pip install -e ".[dev]"
+
+      - name: Run integration tests
+        working-directory: Member_04_Application_Automation
+        env:
+          APP_ENV: test
+          APP_NAME: automation-agent-test
+          APP_VERSION: 0.0.0-test
+          DEBUG: "false"
+          LOG_LEVEL: WARNING
+          DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/automation_test_db
+          REDIS_URL: redis://localhost:6379/0
+          CELERY_BROKER_URL: redis://localhost:6379/1
+          CELERY_RESULT_BACKEND: redis://localhost:6379/2
+          JWT_SECRET_KEY: ci-test-secret-key-not-for-production
+          INTERNAL_SERVICE_SECRET: ci-test-internal-secret
+          ORCHESTRATOR_WEBHOOK_URL: http://localhost:8000/api/v1/webhooks/automation-result
+          ORCHESTRATOR_WEBHOOK_SECRET: ci-test-webhook-secret
+        run: |
+          pytest tests/integration \
+            -m "integration" \
+            --tb=short \
+            --junitxml=test-results/integration.xml \
+            -v
+
+      - name: Upload integration test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: integration-test-results
+          path: Member_04_Application_Automation/test-results/integration.xml
+          retention-days: 14
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # Job 4: Migration Verification
+  # Runs alembic upgrade head + verify_rbac.py + seed_rbac.py against a
+  # fresh postgres instance. Confirms the full bootstrap sequence is clean.
+  # ─────────────────────────────────────────────────────────────────────────
+  migrate-check:
+    name: Migration & RBAC Verification
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: lint
+
+    services:
+      postgres:
+        image: postgres:16.3-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: automation_test_db
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d automation_test_db"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ env.PYTHON_VERSION }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+
+      - name: Install dependencies
+        working-directory: Member_04_Application_Automation
+        run: |
+          pip install --upgrade pip
+          pip install -e ".[dev]"
+
+      - name: Run Alembic migrations (upgrade head)
+        working-directory: Member_04_Application_Automation
+        env:
+          DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/automation_test_db
+          APP_ENV: test
+          APP_NAME: automation-agent-test
+          APP_VERSION: 0.0.0-test
+          DEBUG: "false"
+          LOG_LEVEL: WARNING
+          REDIS_URL: redis://localhost:6379/0
+          CELERY_BROKER_URL: redis://localhost:6379/1
+          CELERY_RESULT_BACKEND: redis://localhost:6379/2
+          JWT_SECRET_KEY: ci-test-secret-key-not-for-production
+          INTERNAL_SERVICE_SECRET: ci-test-internal-secret
+          ORCHESTRATOR_WEBHOOK_URL: http://localhost:8000/api/v1/webhooks/automation-result
+          ORCHESTRATOR_WEBHOOK_SECRET: ci-test-webhook-secret
+        run: |
+          echo "==> Running Alembic migrations..."
+          alembic upgrade head
+          echo "==> Migrations complete."
+
+      - name: Seed RBAC roles and permissions
+        working-directory: Member_04_Application_Automation
+        env:
+          DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/automation_test_db
+          APP_ENV: test
+          APP_NAME: automation-agent-test
+          APP_VERSION: 0.0.0-test
+          DEBUG: "false"
+          LOG_LEVEL: WARNING
+          REDIS_URL: redis://localhost:6379/0
+          CELERY_BROKER_URL: redis://localhost:6379/1
+          CELERY_RESULT_BACKEND: redis://localhost:6379/2
+          JWT_SECRET_KEY: ci-test-secret-key-not-for-production
+          INTERNAL_SERVICE_SECRET: ci-test-internal-secret
+          ORCHESTRATOR_WEBHOOK_URL: http://localhost:8000/api/v1/webhooks/automation-result
+          ORCHESTRATOR_WEBHOOK_SECRET: ci-test-webhook-secret
+        run: |
+          echo "==> Seeding RBAC..."
+          python scripts/seed_rbac.py
+          echo "==> RBAC seed complete."
+
+      - name: Verify RBAC integrity
+        working-directory: Member_04_Application_Automation
+        env:
+          DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/automation_test_db
+          APP_ENV: test
+          APP_NAME: automation-agent-test
+          APP_VERSION: 0.0.0-test
+          DEBUG: "false"
+          LOG_LEVEL: WARNING
+          REDIS_URL: redis://localhost:6379/0
+          CELERY_BROKER_URL: redis://localhost:6379/1
+          CELERY_RESULT_BACKEND: redis://localhost:6379/2
+          JWT_SECRET_KEY: ci-test-secret-key-not-for-production
+          INTERNAL_SERVICE_SECRET: ci-test-internal-secret
+          ORCHESTRATOR_WEBHOOK_URL: http://localhost:8000/api/v1/webhooks/automation-result
+          ORCHESTRATOR_WEBHOOK_SECRET: ci-test-webhook-secret
+        run: |
+          echo "==> Verifying RBAC integrity..."
+          python scripts/verify_rbac.py
+          echo "==> RBAC verification passed."
+
+      - name: Verify no pending migrations (alembic check)
+        working-directory: Member_04_Application_Automation
+        env:
+          DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/automation_test_db
+          APP_ENV: test
+          APP_NAME: automation-agent-test
+          APP_VERSION: 0.0.0-test
+          DEBUG: "false"
+          LOG_LEVEL: WARNING
+          REDIS_URL: redis://localhost:6379/0
+          CELERY_BROKER_URL: redis://localhost:6379/1
+          CELERY_RESULT_BACKEND: redis://localhost:6379/2
+          JWT_SECRET_KEY: ci-test-secret-key-not-for-production
+          INTERNAL_SERVICE_SECRET: ci-test-internal-secret
+          ORCHESTRATOR_WEBHOOK_URL: http://localhost:8000/api/v1/webhooks/automation-result
+          ORCHESTRATOR_WEBHOOK_SECRET: ci-test-webhook-secret
+        run: |
+          echo "==> Checking for unapplied migrations..."
+          alembic check
+          echo "==> All migrations applied."
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # Job 5: Docker Build Smoke Test
+  # Builds both the API and worker images to catch Dockerfile regressions.
+  # Does NOT push or deploy — smoke test only.
+  # ─────────────────────────────────────────────────────────────────────────
+  docker-build:
+    name: Docker Build Smoke Test
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    needs: [unit-tests, migrate-check]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build API image (smoke test)
+        uses: docker/build-push-action@v6
+        with:
+          context: Member_04_Application_Automation
+          file: Member_04_Application_Automation/docker/Dockerfile
+          push: false
+          tags: automation-api:ci-${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          build-args: |
+            BUILDKIT_INLINE_CACHE=1
+
+      - name: Build Worker image (smoke test — includes Chrome)
+        uses: docker/build-push-action@v6
+        with:
+          context: Member_04_Application_Automation
+          file: Member_04_Application_Automation/docker/Dockerfile.worker
+          push: false
+          tags: automation-worker:ci-${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          build-args: |
+            BUILDKIT_INLINE_CACHE=1
+
+      - name: Confirm image sizes
+        run: |
+          echo "==> Built images:"
+          docker images automation-api:ci-${{ github.sha }}
+          docker images automation-worker:ci-${{ github.sha }}
+          echo "==> API image size:"
+          docker inspect automation-api:ci-${{ github.sha }} \
+            --format='{{.Size}}' | numfmt --to=iec-i --suffix=B
+          echo "==> Worker image size:"
+          docker inspect automation-worker:ci-${{ github.sha }} \
+            --format='{{.Size}}' | numfmt --to=iec-i --suffix=B
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # Final Gate: All checks passed
+  # A single job that depends on all others. PR merge gates on this status.
+  # ─────────────────────────────────────────────────────────────────────────
+  ci-gate:
+    name: CI Gate — All Checks Passed
+    runs-on: ubuntu-latest
+    needs: [lint, unit-tests, integration-tests, migrate-check, docker-build]
+    if: always()
+
+    steps:
+      - name: Check all jobs passed
+        run: |
+          results=(
+            "${{ needs.lint.result }}"
+            "${{ needs.unit-tests.result }}"
+            "${{ needs.integration-tests.result }}"
+            "${{ needs.migrate-check.result }}"
+            "${{ needs.docker-build.result }}"
+          )
+          failed=false
+          for result in "${results[@]}"; do
+            if [ "$result" != "success" ] && [ "$result" != "skipped" ]; then
+              echo "❌ Job failed with result: $result"
+              failed=true
+            fi
+          done
+          if [ "$failed" = true ]; then
+            echo "CI gate failed — one or more jobs did not succeed."
+            exit 1
+          fi
+          echo "✅ All CI checks passed."

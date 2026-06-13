@@ -1,0 +1,12 @@
+Dear {{ contact_name }},
+
+Please find attached my application for the {{ role_title }} position at {{ company_name }}.
+
+{% if custom_message %}
+{{ custom_message }}
+{% else %}
+I am very interested in this role and believe my background makes me a strong fit for your team. I have attached my resume for your review.
+{% endif %}
+
+Sincerely,
+{{ candidate_name }}
