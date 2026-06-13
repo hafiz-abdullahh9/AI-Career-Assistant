@@ -1,0 +1,424 @@
+AGENT 02   |   AI-Based Career Assistant System   |   TEAM ASSIGNMENTS & DELIVERABLES GUIDE
+Members 1 · 2 · 3 · 4 · 5  |  Multi-Agent Career Pipeline  |  2026
+
+Overview
+Member
+Primary Component
+Member 1 (Project Lead)
+Career Orchestrator + Repo, Spec & Integration Lead
+Member 2
+Job Scraping & Verification Engineer
+Member 3
+Job Matching & Resume/Cover Letter Engineer
+Member 4
+Application Automation & Tracking Engineer
+Member 5
+Skill Gap, Interview Prep & Infrastructure Engineer
+
+Each member works on a dedicated feature branch and submits PRs to develop. The Project Lead (Member 1) reviews and merges all PRs. Read your section carefully — your deliverables are on the critical path for at least one other team member.
+
+M1
+Member 1 — Project Lead & Career Orchestrator Engineer
+Agent 02 — AI-Based Career Assistant System
+
+Overview & Branch
+Property
+Detail
+Branch name
+feature/career-orchestrator
+Primary files
+/agents/career_orchestrator.py  +  /docs/tool_interface_spec.md  +  repo skeleton
+Reports to
+N/A — coordinates all reviews and merges
+Depends on
+Nothing — foundational work, must be ready Week 1
+Blocks
+All other members depend on the Tool Interface Spec and repo skeleton before starting
+Phase ownership
+Phase 1 (Orchestrator + repo) + ongoing PR review across all phases
+
+Your Components
+Career Orchestrator — /agents/career_orchestrator.py
+Entry point: sequences the pipeline (scraping → verification → matching → documents → application → tracking → skill gap/interview)
+Maintains Profile Context across all agent handoffs (user_id, profile_data, job_queue, match_scores, application_status, agent_chain)
+Output structured JSON for each pipeline stage transition
+Model: gpt-4o (elevated reasoning for orchestration — approved)
+
+Repo Setup & Tool Interface Spec
+Publish /docs/tool_interface_spec.md by Week 1, Day 3 — defines function signatures, input/output types, and error formats for ALL tools
+Set up full repo skeleton (folders, base files, branch protection) before Week 1, Day 1
+Configure Redis session store and PostgreSQL profile schema (Section 6 of SRS)
+Run integration tests once each member's branch is merged
+
+Deliverables
+#
+Deliverable
+File / Location
+Due
+1
+Repo skeleton + branch protection
+/ (root)
+Week 1, Day 1
+2
+Tool Interface Specification
+/docs/tool_interface_spec.md
+Week 1, Day 3
+3
+Career Orchestrator — full implementation
+/agents/career_orchestrator.py
+Week 2
+4
+Profile Context schema (Redis + PostgreSQL)
+/infra/profile_context.py
+Week 2
+5
+Orchestrator unit tests
+/tests/test_orchestrator.py
+Week 2
+6
+Integration test suite (runs after each merge)
+/tests/integration/
+Ongoing
+
+Acceptance Criteria
+Tool Interface Spec published and reviewed before any member starts tool implementation
+Orchestrator correctly sequences all 8 pipeline stages with valid handoffs
+Profile Context persists across handoffs — verified by integration tests
+Orchestrator never raises an unhandled exception — all stage failures degrade gracefully
+All PRs reviewed within 24 hours of opening
+All tests green before merging any branch into develop
+
+M2
+Member 2 — Job Scraping & Verification Engineer
+Agent 02 — AI-Based Career Assistant System
+
+Overview & Branch
+Property
+Detail
+Branch name
+feature/job-scraping-verification
+Primary files
+/agents/job_scraping_agent.py  +  /agents/job_verification_agent.py  +  /tools/scraping_tools.py
+Reports to
+Project Lead (Member 1) for PR reviews and merge approvals
+Depends on
+Tool Interface Spec from Lead (available Week 1, Day 3)
+Blocks
+Job Matching Agent (Member 3) cannot run until verified job listings are available
+Phase ownership
+Phase 1 (Job Scraping Agent) + Phase 1 (Job Verification Agent)
+
+Your Components
+Job Scraping Agent — /agents/job_scraping_agent.py
+Collect job/internship listings from LinkedIn and Indeed using search filters (keywords, location, job type, experience level)
+Extract: company name, job title, description, required skills, location, salary, deadline, contact info
+Assign unique job_id to each record; standardize fields across platforms
+Model: gpt-4o-mini — do NOT upgrade without lead approval
+Tools to call: scrape_linkedin_jobs, scrape_indeed_jobs
+
+Job Verification Agent — /agents/job_verification_agent.py
+Detect duplicate postings across platforms
+Verify company legitimacy using public records (verify_company tool)
+Identify expired postings by comparing posted_date vs application_deadline
+Flag suspicious listings (spelling errors, unusual payment requests, invalid contact links)
+Output verified_status: verified / rejected / flagged_for_review per job
+
+Error Handling (both agents)
+API connection failures: retry with exponential backoff
+Rate limiting: implement queue and schedule retries
+Incomplete job data: log and flag for manual review — never crash the pipeline
+
+Deliverables
+#
+Deliverable
+File / Location
+Due
+1
+Job Scraping Agent — full implementation
+/agents/job_scraping_agent.py
+Week 2
+2
+Job Verification Agent — full implementation
+/agents/job_verification_agent.py
+Week 2
+3
+Scraping tools — LinkedIn + Indeed
+/tools/scraping_tools.py
+Week 2
+4
+Company verification tool
+/tools/verification_tools.py
+Week 2
+5
+Unit tests (>= 10 cases per agent)
+/tests/test_scraping_verification.py
+Week 2
+6
+PR submitted to develop with passing CI
+GitHub PR
+Week 2
+
+Acceptance Criteria
+Job Verification Agent achieves >= 95% accuracy filtering invalid listings (per SRS 5.3)
+Both agents return valid JSON for all inputs — never raise an unhandled exception
+Duplicate detection verified across LinkedIn + Indeed mixed datasets
+All API calls use environment variables for credentials — no hardcoded keys
+All tests green before PR is opened
+
+M3
+Member 3 — Job Matching, Resume & Cover Letter Engineer
+Agent 02 — AI-Based Career Assistant System
+
+Overview & Branch
+Property
+Detail
+Branch name
+feature/matching-documents
+Primary files
+/agents/job_matching_agent.py  +  /agents/resume_agent.py  +  /agents/cover_letter_agent.py  +  /tools/document_tools.py
+Reports to
+Project Lead (Member 1)
+Depends on
+Verified job listings from Member 2 must be available; Tool Interface Spec from Lead
+Blocks
+Application Automation Agent (Member 4) cannot run until customized documents are produced
+Phase ownership
+Phase 2 (Job Matching) + Phase 3 (Resume & Cover Letter Generation)
+
+Your Components
+Job Matching Agent — /agents/job_matching_agent.py
+Compare user profile (skills, experience, location, goals) against verified job requirements
+Perform skill matching: exact, similar, and related skills
+Generate weighted compatibility score (0–100%) and rank recommendations
+Output detailed breakdown of matching factors and skill match percentages
+Tool to call: calculate_match_score
+
+Resume Optimization Agent — /agents/resume_agent.py
+Reorganize and highlight CV content to align with job keywords — NEVER invent skills, experience, or achievements (hard constraint)
+Apply ATS-compatible formatting: no graphics, columns, or complex layouts
+Output customized resume (PDF) + keyword incorporation report + ATS compatibility score
+Tool to call: generate_resume
+
+Cover Letter Agent — /agents/cover_letter_agent.py
+Generate personalized cover letter using profile, job description, and company info
+Tone: professional, tailored to industry; coordinate with Resume Agent for consistency
+Handle missing company info by generating a generic but professional letter
+Tool to call: generate_cover_letter
+
+Deliverables
+#
+Deliverable
+File / Location
+Due
+1
+Job Matching Agent — full implementation
+/agents/job_matching_agent.py
+Week 3
+2
+Resume Optimization Agent — full implementation
+/agents/resume_agent.py
+Week 4
+3
+Cover Letter Agent — full implementation
+/agents/cover_letter_agent.py
+Week 4
+4
+Document generation tools
+/tools/document_tools.py
+Week 4
+5
+Unit tests for all 3 agents
+/tests/test_matching_documents.py
+Week 4
+6
+PR submitted to develop with passing CI
+GitHub PR
+Week 4
+
+Acceptance Criteria
+Job Matching precision > 85% on top recommendations (per SRS 5.3)
+Resume factual accuracy = 100% — verified against source CV in tests, zero invented content
+Cover letter keyword inclusion >= 80% of job description keywords
+Resume passes ATS compatibility validation — no unsupported formatting elements
+All tests green before PR is opened
+
+M4
+Member 4 — Application Automation & Tracking Engineer
+Agent 02 — AI-Based Career Assistant System
+
+Overview & Branch
+Property
+Detail
+Branch name
+feature/application-automation
+Primary files
+/agents/application_agent.py  +  /tools/email_tools.py  +  /tools/web_form_tools.py  +  /services/tracking_service.py
+Reports to
+Project Lead (Member 1)
+Depends on
+Resume + Cover Letter outputs from Member 3 must be available for end-to-end testing
+Blocks
+Skill Gap & Interview Agent (Member 5) needs application history for context — but can develop in parallel using mocked data
+Phase ownership
+Phase 4 (Application Automation) + Phase 4 (Application Tracking Dashboard)
+
+Your Components
+Application Automation Agent — /agents/application_agent.py
+Determine application method from job listing: email or web-form
+Email method: format professional email, attach resume + cover letter, send, log timestamp
+Web-form method: navigate to portal, parse form fields, fill with profile data, upload documents, submit, capture confirmation
+Handle errors: email delivery failure (retry/notify), form timeout (retry/notify), unrecognized fields (flag for manual completion), automation blocked (notify user)
+Tools to call: send_application_email, submit_web_application
+
+Application Tracking Service — /services/tracking_service.py
+Record each submission with metadata (method, timestamp, status)
+Track status: Applied, Under Review, Interview Scheduled, Rejected, Accepted
+Monitor user email inbox (OAuth) for interview/rejection patterns and update status
+Provide statistics: total applied, response rate, interview rate
+Tool to call: update_application_status
+
+Deliverables
+#
+Deliverable
+File / Location
+Due
+1
+Application Automation Agent — full implementation
+/agents/application_agent.py
+Week 5
+2
+Email application tool (SMTP/Gmail)
+/tools/email_tools.py
+Week 5
+3
+Web-form automation tool (Selenium)
+/tools/web_form_tools.py
+Week 5
+4
+Application Tracking Service + dashboard API
+/services/tracking_service.py
+Week 6
+5
+Unit tests for agent + tools + tracking
+/tests/test_application_tracking.py
+Week 6
+6
+PR submitted to develop with passing CI
+GitHub PR
+Week 6
+
+Acceptance Criteria
+Application submission completes within 2 minutes per application (per SRS 5.1)
+Both email and web-form paths handle all documented error cases without crashing
+Tracking dashboard reflects accurate status within 2 seconds of an update event
+All API calls and OAuth tokens use environment variables — no hardcoded credentials
+All tests green before PR is opened
+
+M5
+Member 5 — Skill Gap, Interview Prep & Infrastructure Engineer
+Agent 02 — AI-Based Career Assistant System
+
+Overview & Branch
+Property
+Detail
+Branch name
+feature/skillgap-interview-infra
+Primary files
+/agents/skill_gap_agent.py  +  /agents/interview_agent.py  +  /infra/k8s/*.yaml  +  observability configs
+Reports to
+Project Lead (Member 1)
+Depends on
+Lead provides Redis/profile context schema — do not duplicate it
+Blocks
+Phase 6 sign-off cannot happen until tracing dashboard and Datadog APM are live
+Phase ownership
+Phase 5 (Skill Gap & Interview Prep) + Phase 6 (Infrastructure & Observability)
+
+Your Components
+Skill Gap Analysis Agent — /agents/skill_gap_agent.py
+Compare user's current skills against target job requirements
+Calculate skill gap, priority level, and estimated time to acquire each skill
+Generate prioritized learning roadmap with recommended courses/resources
+Project potential salary improvement with new skills
+Tool to call: generate_learning_roadmap
+
+Interview Preparation Agent — /agents/interview_agent.py
+Generate technical and HR-style questions based on job description
+Conduct mock interview, transcribe responses, evaluate quality/completeness/communication
+Generate detailed feedback and track performance across sessions
+Handle audio/video issues by offering text-based fallback; save progress on network interruption
+Tool to call: run_mock_interview
+
+Infrastructure & Observability
+Kubernetes manifests: deployment.yaml (1 pod per agent group), hpa.yaml (scale on queue depth), service.yaml, configmap.yaml, secret.yaml template (placeholders only)
+Enable OpenAI Agents SDK tracing; configure export to Datadog APM with service map across all 9 agents
+PagerDuty alerts: queue depth > 500, error rate > 5%, P95 latency > 30s
+Load test: validate 1,000 concurrent users with dashboard load < 2s and DB queries < 100ms avg (per SRS 5.1, 5.4)
+
+Deliverables
+#
+Deliverable
+File / Location
+Due
+1
+Skill Gap Analysis Agent — full implementation
+/agents/skill_gap_agent.py
+Week 6
+2
+Interview Preparation Agent — full implementation
+/agents/interview_agent.py
+Week 7
+3
+Kubernetes manifests — deployment + HPA + service + configmap
+/infra/k8s/*.yaml
+Week 7
+4
+Datadog APM instrumentation + service map
+/infra/datadog_setup.py
+Week 7
+5
+PagerDuty alert rules — 3 thresholds
+Datadog monitors config
+Week 7
+6
+Load test results — P95 latency, throughput, error rate
+/docs/load_test_results.md
+Week 8
+7
+PR submitted to develop with passing CI
+GitHub PR
+Week 7
+
+Acceptance Criteria
+Skill gap report and roadmap generated for any verified user profile
+Mock interview produces transcript + scored feedback for text and audio modes
+Kubernetes HPA scales pods correctly when queue depth exceeds threshold — verified in load test
+Load test: system supports 1,000 concurrent users with dashboard load < 2 seconds (per SRS 5.1)
+No credentials or secrets committed to Git at any point
+All tests green before PR is opened
+
+Shared Rules for All Team Members
+Rule
+Detail
+Branch naming
+Always use the exact branch name assigned to you — no custom names
+Commit messages
+Use conventional commits: feat: / fix: / chore: / test: / docs: followed by description
+PR deadline
+All PRs must be open on GitHub at least 2 days before your phase end date to allow review time
+No hardcoded secrets
+Use environment variables for all API keys and OAuth tokens — violations will block your PR merge
+Tests first
+Write at least 1 unit test per function before opening your PR — no test-free PRs accepted
+Blockers
+If you are blocked for more than 4 hours, message the Lead (Member 1) immediately — do not wait
+Model discipline
+Do not change the assigned model (gpt-4o-mini vs gpt-4o) without Lead approval — it affects cost KPIs
+Interface spec
+Check /docs/tool_interface_spec.md (written by Lead, available Week 1 Day 3) before writing any tool
+Factual accuracy
+Resume/Cover Letter content must never include invented skills, experience, or credentials — this is a hard constraint across the system
+Data privacy
+All PII (CVs, contact info, tokens) must be encrypted at rest (AES-256) and in transit (TLS 1.3) per SRS 5.2
+
+AGENT 02 — Team Assignments Guide  |  Confidential — Team Internal  |  2026
