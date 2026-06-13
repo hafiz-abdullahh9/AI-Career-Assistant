@@ -1,11 +1,15 @@
 import json
 import logging
 from typing import List, Dict, Any
-from services.config import settings
+from django.conf import settings
+from django.shortcuts import get_object_or_404
+from django.http import Http404
+from .models import User, Job, UserSkill, SkillGapAnalysis, InterviewSession
 
 logger = logging.getLogger(__name__)
 
-# Initialize LLM Clients lazily
+# ================= LLM Clients Initialization =================
+
 def get_gemini_client():
     if not settings.GEMINI_API_KEY or "your_gemini" in settings.GEMINI_API_KEY:
         return None
@@ -66,10 +70,9 @@ def call_llm(prompt: str, json_response: bool = True) -> str:
     return ""
 
 
-# ================= Business Specific Prompt Wrappers =================
+# ================= LLM Prompt Wrappers =================
 
-def generate_skill_gap_analysis(user_skills: List[Dict[str, Any]], job_title: str, job_description: str) -> Dict[str, Any]:
-    """Generates skill gap analysis, roadmaps, and course suggestions."""
+def run_llm_skill_gap(user_skills: List[Dict[str, Any]], job_title: str, job_description: str) -> Dict[str, Any]:
     skills_str = ", ".join([f"{s['skill_name']} ({s['proficiency_level']})" for s in user_skills])
     
     prompt = f"""
@@ -102,7 +105,7 @@ def generate_skill_gap_analysis(user_skills: List[Dict[str, Any]], job_title: st
     }}
     Note: salary_projection should be an estimated percentage increase (float) in the user's market value if they acquire these missing skills.
     
-    Provide ONLY the raw JSON string. Do not wrap in markdown blocks like ```json.
+    Provide ONLY the raw JSON string. Do not wrap in markdown blocks.
     """
     
     raw_response = call_llm(prompt, json_response=True)
@@ -145,8 +148,7 @@ def generate_skill_gap_analysis(user_skills: List[Dict[str, Any]], job_title: st
         "salary_projection": 20.0
     }
 
-def generate_interview_questions(job_title: str, job_description: str) -> List[str]:
-    """Generates 5 contextually relevant interview questions."""
+def run_llm_interview_questions(job_title: str, job_description: str) -> List[str]:
     prompt = f"""
     You are an expert technical interviewer.
     Generate exactly 5 interview questions for the job role '{job_title}' based on the job description below.
@@ -185,8 +187,7 @@ def generate_interview_questions(job_title: str, job_description: str) -> List[s
         "What are the benefits of using a caching layer like Redis in a backend application?"
     ]
 
-def evaluate_interview_transcript(questions: List[str], responses: List[str]) -> Dict[str, Any]:
-    """Evaluates the candidate's answers against the questions."""
+def run_llm_interview_evaluation(questions: List[str], responses: List[str]) -> Dict[str, Any]:
     qa_list = []
     for i, q in enumerate(questions):
         ans = responses[i] if i < len(responses) else "No response provided."
@@ -250,3 +251,93 @@ def evaluate_interview_transcript(questions: List[str], responses: List[str]) ->
         "overall_feedback": "The candidate demonstrates solid fundamental knowledge but needs to provide more specific examples and elaborate more deeply on system design patterns.",
         "overall_score": int(overall_sum / len(questions)) if questions else 0
     }
+
+
+# ================= Business Logic Functions =================
+
+def analyze_skill_gap(user_id: int, job_id: int) -> SkillGapAnalysis:
+    user = get_object_or_404(User, id=user_id)
+    job = get_object_or_404(Job, id=job_id)
+
+    user_skills = UserSkill.objects.filter(user=user)
+    
+    skills_data = [
+        {
+            "skill_name": skill.skill_name,
+            "proficiency_level": skill.proficiency_level,
+            "years_experience": skill.years_experience
+        }
+        for skill in user_skills
+    ]
+    
+    analysis_result = run_llm_skill_gap(
+        user_skills=skills_data,
+        job_title=job.title,
+        job_description=job.description
+    )
+    
+    db_analysis = SkillGapAnalysis.objects.create(
+        user=user,
+        job=job,
+        missing_skills=analysis_result.get("missing_skills", []),
+        proficiency_gap=analysis_result.get("proficiency_gap", []),
+        learning_roadmap=analysis_result.get("learning_roadmap", []),
+        salary_projection=analysis_result.get("salary_projection", 0.0)
+    )
+    
+    return db_analysis
+
+
+def start_interview_session(user_id: int, job_id: int) -> InterviewSession:
+    user = get_object_or_404(User, id=user_id)
+    job = get_object_or_404(Job, id=job_id)
+
+    questions = run_llm_interview_questions(job.title, job.description)
+    
+    db_session = InterviewSession.objects.create(
+        user=user,
+        job=job,
+        question_set=questions,
+        responses=[""] * len(questions),
+        feedback={},
+        score=None,
+        status="started"
+    )
+    
+    return db_session
+
+
+def submit_interview_response(session_id: int, question_index: int, answer: str) -> InterviewSession:
+    db_session = get_object_or_404(InterviewSession, id=session_id)
+    
+    if db_session.status != "started":
+        raise ValueError("Cannot submit responses to a completed or evaluated session")
+
+    if question_index < 0 or question_index >= len(db_session.question_set):
+        raise ValueError(f"Invalid question index {question_index}. Session contains {len(db_session.question_set)} questions.")
+
+    updated_responses = list(db_session.responses)
+    while len(updated_responses) < len(db_session.question_set):
+        updated_responses.append("")
+    updated_responses[question_index] = answer
+    
+    db_session.responses = updated_responses
+    db_session.save()
+    
+    return db_session
+
+
+def evaluate_interview_session(session_id: int) -> InterviewSession:
+    db_session = get_object_or_404(InterviewSession, id=session_id)
+    
+    evaluation_result = run_llm_interview_evaluation(
+        questions=db_session.question_set,
+        responses=db_session.responses
+    )
+    
+    db_session.feedback = evaluation_result
+    db_session.score = evaluation_result.get("overall_score", 0)
+    db_session.status = "evaluated"
+    db_session.save()
+    
+    return db_session
