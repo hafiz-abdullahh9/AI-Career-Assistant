@@ -19,6 +19,9 @@ from difflib import SequenceMatcher
 
 logger = logging.getLogger("career_assistant.verification")
 
+from config.schemas import CompanyVerificationSchema, ExpiryCheckSchema, SuspicionCheckSchema
+from tools.retry_helpers import retry_with_backoff
+
 
 # ═══════════════════════════════════════════════════════════════════
 #  SUSPICIOUS CONTENT PATTERNS
@@ -123,26 +126,70 @@ def verify_company(company_name: str) -> dict:
             flags.append("Company name contains URL")
             confidence -= 0.2
 
+        import os
+        import urllib.parse
+        import requests
+        from config import settings
+
+        api_url = getattr(settings, "COMPANY_VERIFICATION_API", "") or os.environ.get("COMPANY_VERIFICATION_API", "")
+        verification_method = "heuristic"
+        
+        if api_url:
+            try:
+                @retry_with_backoff(retries=2, base_delay=0.5, max_delay=3.0)
+                def call_registry_api():
+                    parsed = urllib.parse.urlparse(api_url)
+                    if parsed.query:
+                        url = f"{api_url}&company={urllib.parse.quote(name)}"
+                    else:
+                        url = f"{api_url}?company={urllib.parse.quote(name)}"
+                    
+                    response = requests.get(url, timeout=5.0)
+                    response.raise_for_status()
+                    return response.json()
+
+                api_data = call_registry_api()
+                logger.info(f"External company verification succeeded for '{name}': {api_data}")
+                
+                if isinstance(api_data, dict):
+                    verification_method = "external_api"
+                    exists = api_data.get("exists", True)
+                    api_confidence = api_data.get("confidence", 0.8)
+                    api_flags = api_data.get("flags", [])
+                    
+                    if not exists:
+                        flags.append("Company not found in official registry database")
+                        confidence = min(confidence, 0.2)
+                    else:
+                        confidence = (confidence + api_confidence) / 2
+                    
+                    if api_flags:
+                        flags.extend(api_flags)
+            except Exception as e:
+                logger.warning(f"External company verification failed for '{name}' (falling back to heuristics): {e}")
+
         confidence = max(0.0, min(1.0, confidence))
         is_verified = confidence >= 0.5 and len(flags) == 0
 
-        return {
+        res = {
             "company_name": name,
             "is_verified": is_verified,
             "confidence": round(confidence, 2),
             "flags": flags,
-            "verification_method": "heuristic",
+            "verification_method": verification_method,
         }
+        return CompanyVerificationSchema.model_validate(res).model_dump()
 
     except Exception as exc:
         logger.error(f"Company verification error for '{company_name}': {exc}", exc_info=True)
-        return {
+        fallback = {
             "company_name": company_name or "",
             "is_verified": False,
             "confidence": 0.0,
             "flags": [f"Verification error: {exc}"],
             "verification_method": "error",
         }
+        return CompanyVerificationSchema.model_validate(fallback).model_dump()
 
 
 # ═══════════════════════════════════════════════════════════════════
@@ -323,16 +370,17 @@ def check_expired_posting(job: dict) -> dict:
             except Exception:
                 pass
 
-        return result
+        return ExpiryCheckSchema.model_validate(result).model_dump()
 
     except Exception as exc:
         logger.error(f"Expired check error: {exc}", exc_info=True)
-        return {
+        fallback = {
             "is_expired": False,
             "expiry_reason": f"Check error: {exc}",
             "days_since_posted": None,
             "days_until_deadline": None,
         }
+        return ExpiryCheckSchema.model_validate(fallback).model_dump()
 
 
 # ═══════════════════════════════════════════════════════════════════
@@ -455,16 +503,18 @@ def flag_suspicious_listing(job: dict) -> dict:
         score = min(1.0, score)
         is_suspicious = score >= 0.3 or len(flags) >= 2
 
-        return {
+        res = {
             "is_suspicious": is_suspicious,
             "suspicion_score": round(score, 2),
             "flags": flags,
         }
+        return SuspicionCheckSchema.model_validate(res).model_dump()
 
     except Exception as exc:
         logger.error(f"Suspicious check error: {exc}", exc_info=True)
-        return {
+        fallback = {
             "is_suspicious": False,
             "suspicion_score": 0.0,
             "flags": [f"Check error: {exc}"],
         }
+        return SuspicionCheckSchema.model_validate(fallback).model_dump()

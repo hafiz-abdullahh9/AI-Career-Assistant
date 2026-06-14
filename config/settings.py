@@ -12,8 +12,7 @@ load_dotenv()
 
 # ── OpenAI / LLM Settings ─────────────────────────────────────────
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "")
-GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
-LLM_MODEL = "gemini-2.5-flash"  # Switched to Gemini as requested
+LLM_MODEL = "gpt-4o-mini"
 
 # ── Scraping Settings ──────────────────────────────────────────────
 BASE_URL_INDEED = "https://pk.indeed.com"

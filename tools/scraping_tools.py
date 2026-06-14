@@ -30,6 +30,9 @@ from urllib.parse import urljoin, urlencode, quote_plus, urlparse, parse_qs
 
 logger = logging.getLogger("career_assistant.scraping")
 
+from tools.retry_helpers import retry_with_backoff
+from tools.scraping_queue import ScrapingQueue
+
 try:
     from config import settings as _settings   # adjust if your path differs
 except Exception:
@@ -311,32 +314,14 @@ async def _rate_limit(min_delay: float = None, max_delay: float = None):
     await asyncio.sleep(delay)
 
 
+@retry_with_backoff()
 async def _fetch_with_retry(crawler, url: str, config, retries: int = 2):
     """Fetch a URL with retry logic and exponential backoff."""
-    last_error = "Unknown error"
-    for attempt in range(retries + 1):
-        try:
-            result = await crawler.arun(url=url, config=config)
-            if result.success:
-                return result
-            else:
-                last_error = result.error_message
-                logger.warning(
-                    f"Attempt {attempt + 1}/{retries + 1} failed for {url}: {result.error_message}"
-                )
-        except Exception as e:
-            last_error = str(e)
-            logger.warning(
-                f"Attempt {attempt + 1}/{retries + 1} exception for {url}: {e}"
-            )
-
-        if attempt < retries:
-            backoff = min(60.0, (2 ** attempt) * 1.0)
-            logger.info(f"Retrying in {backoff:.1f}s (exponential backoff)")
-            await asyncio.sleep(backoff)
-
-    logger.error(f"All {retries + 1} attempts failed for {url}. Last error: {last_error}")
-    return None
+    result = await crawler.arun(url=url, config=config)
+    if not result or not result.success:
+        err = result.error_message if result else "No result returned"
+        raise Exception(f"Fetch failed: {err}")
+    return result
 
 
 # ═══════════════════════════════════════════════════════════════════
@@ -740,28 +725,45 @@ async def scrape_indeed_jobs(
                     break
 
                 new = [l for l in listings if l["detail_url"] not in seen_urls]
-                for listing in new:
-                    seen_urls.add(listing["detail_url"])
-                    detail_html = ""
-                    try:
-                        dres = await _fetch_with_retry(crawler, listing["detail_url"], crawler_config)
-                        detail_html = dres.html if dres else ""
-                    except Exception as exc:
-                        logger.warning(f"Indeed detail fetch failed {listing['detail_url']}: {exc}")
+                queue = ScrapingQueue(queue_size=max(1, _cfg("RATE_LIMIT_QUEUE_SIZE", 100)), num_workers=1)
+                await queue.start()
+
+                async def fetch_and_parse_indeed_detail(listing_ref):
+                    url_to_crawl = listing_ref["detail_url"]
+                    
+                    @retry_with_backoff()
+                    async def fetch_op():
+                        res = await crawler.arun(url=url_to_crawl, config=crawler_config)
+                        if not res or not res.success:
+                            err_msg = res.error_message if res else "No response"
+                            raise Exception(f"Failed to fetch Indeed detail page: {url_to_crawl} (Error: {err_msg})")
+                        return res
+
+                    dres = await fetch_op()
+                    detail_html = dres.html if dres else ""
                     if detail_html:
                         desc = _parse_indeed_description(detail_html)
                         if desc:
-                            listing["description"] = desc
-                        listing["apply_link"] = (_parse_indeed_apply_link(detail_html, listing["detail_url"])
-                                                 or listing["detail_url"])
+                            listing_ref["description"] = desc
+                        listing_ref["apply_link"] = (_parse_indeed_apply_link(detail_html, url_to_crawl)
+                                                 or url_to_crawl)
                     else:
-                        listing["apply_link"] = listing.get("apply_link") or listing["detail_url"]
-                    listing["source_url"] = listing["detail_url"]
-                    await _rate_limit()
+                        listing_ref["apply_link"] = listing_ref.get("apply_link") or url_to_crawl
+                    listing_ref["source_url"] = url_to_crawl
+                    return listing_ref
+
+                for listing in new:
+                    seen_urls.add(listing["detail_url"])
+                    await queue.add_task(fetch_and_parse_indeed_detail, listing)
+
+                await queue.queue.join()
+                await queue.stop()
+
+                for listing in queue.results:
                     try:
                         all_jobs.append(_standardise_job_record(listing, "indeed"))
                     except Exception as exc:
-                        logger.error(f"Error standardising {listing['detail_url']}: {exc}")
+                        logger.error(f"Error standardising {listing.get('detail_url', '')}: {exc}")
 
                 page += 1
                 if not _has_indeed_next_page(result.html):
@@ -971,22 +973,39 @@ async def scrape_linkedin_jobs(
                     break
 
                 new = [l for l in listings if l.get("detail_url") and l["detail_url"] not in seen_urls]
+                queue = ScrapingQueue(queue_size=max(1, _cfg("RATE_LIMIT_QUEUE_SIZE", 100)), num_workers=1)
+                await queue.start()
+
+                async def fetch_and_parse_linkedin_detail(listing_ref):
+                    url_to_crawl = listing_ref["detail_url"]
+                    
+                    @retry_with_backoff()
+                    async def fetch_op():
+                        res = await crawler.arun(url=url_to_crawl, config=crawler_config)
+                        if not res or not res.success:
+                            err_msg = res.error_message if res else "No response"
+                            raise Exception(f"Failed to fetch LinkedIn detail page: {url_to_crawl} (Error: {err_msg})")
+                        return res
+
+                    dres = await fetch_op()
+                    detail_html = dres.html if dres else ""
+                    listing_ref["description"] = _parse_linkedin_description(detail_html) if detail_html else ""
+                    listing_ref["apply_link"] = url_to_crawl
+                    listing_ref["source_url"] = url_to_crawl
+                    return listing_ref
+
                 for listing in new:
                     seen_urls.add(listing["detail_url"])
-                    detail_html = ""
-                    try:
-                        dres = await _fetch_with_retry(crawler, listing["detail_url"], crawler_config)
-                        detail_html = dres.html if dres else ""
-                    except Exception as exc:
-                        logger.warning(f"LinkedIn detail fetch failed {listing['detail_url']}: {exc}")
-                    listing["description"] = _parse_linkedin_description(detail_html) if detail_html else ""
-                    listing["apply_link"] = listing["detail_url"]
-                    listing["source_url"] = listing["detail_url"]
-                    await _rate_limit()
+                    await queue.add_task(fetch_and_parse_linkedin_detail, listing)
+
+                await queue.queue.join()
+                await queue.stop()
+
+                for listing in queue.results:
                     try:
                         all_jobs.append(_standardise_job_record(listing, "linkedin"))
                     except Exception as exc:
-                        logger.error(f"Error standardising {listing.get('detail_url')}: {exc}")
+                        logger.error(f"Error standardising {listing.get('detail_url', '')}: {exc}")
 
                 page += 1
                 start += 25  # LinkedIn uses 25 per page

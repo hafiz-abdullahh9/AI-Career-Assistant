@@ -3,29 +3,36 @@ Job Scraping Agent — /agents/job_scraping_agent.py
 
 Agent 02 — AI-Based Career Assistant System
 Member 2 — Job Scraping & Verification Engineer
-
-Responsibilities:
-  - Collect job/internship listings from LinkedIn and Indeed using search filters
-    (keywords, location, job type, experience level)
-  - Extract: company name, job title, description, required skills, location,
-    salary, deadline, contact info
-  - Assign unique job_id to each record; standardise fields across platforms
-  - Model: gpt-4o-mini — do NOT upgrade without lead approval
-  - Tools to call: scrape_linkedin_jobs, scrape_indeed_jobs
-
-Error Handling:
-  - API connection failures: retry with exponential backoff
-  - Rate limiting: implement queue and schedule retries
-  - Incomplete job data: log and flag for manual review — never crash the pipeline
 """
 
 import asyncio
 import logging
 import json
-from typing import Optional
+import os
+from typing import Optional, List
 from datetime import datetime
 
+import sys
+import os
+
+# Bypass local namespace shadowing of 'agents' module
+_local_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+_sys_path_backup = sys.path.copy()
+sys.path = [p for p in sys.path if os.path.abspath(p) != os.path.abspath(_local_dir)]
+
+_agents_module_backup = sys.modules.get('agents', None)
+if 'agents' in sys.modules:
+    del sys.modules['agents']
+
+try:
+    from agents import Agent, Runner
+finally:
+    sys.path = _sys_path_backup
+    if _agents_module_backup is not None:
+        sys.modules['agents'] = _agents_module_backup
 from tools.scraping_tools import scrape_indeed_jobs, scrape_linkedin_jobs
+from tools.retry_helpers import retry_with_backoff
+from config.schemas import JobEnhancement, ScrapedJobSchema
 
 logger = logging.getLogger("career_assistant.job_scraping_agent")
 
@@ -35,43 +42,45 @@ class JobScrapingAgent:
     AI-powered Job Scraping Agent that collects job/internship listings
     from LinkedIn and Indeed using search filters.
 
-    Uses gpt-4o-mini for intelligent field extraction and standardisation.
-    All outputs are valid JSON — never raises an unhandled exception.
+    Uses gpt-4o-mini via openai-agents SDK for intelligent field extraction.
+    All outputs are validated using Pydantic schemas.
     """
 
-    # Model configured via settings (Gemini)
-    try:
-        from config import settings
-        MODEL = getattr(settings, "LLM_MODEL", "gemini-2.5-flash")
-    except ImportError:
-        MODEL = "gemini-2.5-flash"
+    MODEL = "gpt-4o-mini"
 
-    def __init__(self, gemini_api_key: Optional[str] = None):
+    def __init__(self, openai_api_key: Optional[str] = None):
         """
         Initialise the Job Scraping Agent.
 
         Args:
-            gemini_api_key: Gemini API key. If None, reads from GEMINI_API_KEY env var.
+            openai_api_key: OpenAI API key. If None, reads from OPENAI_API_KEY env var.
         """
-        import os
-        self.api_key = gemini_api_key or os.environ.get("GEMINI_API_KEY", "")
+        self.api_key = openai_api_key or os.environ.get("OPENAI_API_KEY", "")
+        
+        # Initialize standard OpenAI client for backward compatibility
         self._client = None
-        self.scrape_history: list[dict] = []
-        logger.info(f"JobScrapingAgent initialised (model={self.MODEL})")
+        
+        # Initialize openai-agents SDK Agent
+        self.sdk_agent = Agent(
+            name="JobScrapingAgent",
+            instructions=(
+                "You are an expert job listing analyser. Your task is to extract structured details from "
+                "job postings and output them as a clean JSON object. Ensure that the values correspond exactly "
+                "to the requested properties."
+            ),
+            model=self.MODEL
+        )
+        
+        self.scrape_history: List[dict] = []
+        logger.info(f"JobScrapingAgent initialised with model={self.MODEL}")
 
     @property
     def client(self):
-        """Lazy-initialise the OpenAI client."""
+        """Lazy-initialise standard OpenAI client for fallback/legacy functions."""
         if self._client is None:
             try:
                 from openai import OpenAI
-                self._client = OpenAI(
-                    api_key=self.api_key,
-                    base_url="https://generativelanguage.googleapis.com/v1beta/openai/"
-                )
-            except ImportError:
-                logger.warning("OpenAI package not installed. LLM features disabled.")
-                self._client = None
+                self._client = OpenAI(api_key=self.api_key)
             except Exception as e:
                 logger.error(f"Failed to initialise OpenAI client: {e}", exc_info=True)
                 self._client = None
@@ -83,30 +92,12 @@ class JobScrapingAgent:
         location: str = "",
         job_type: str = "",
         experience_level: str = "",
-        platforms: Optional[list[str]] = None,
-        proxies: Optional[list[str]] = None,
+        platforms: Optional[List[str]] = None,
+        proxies: Optional[List[str]] = None,
         max_pages: int = 10,
     ) -> dict:
         """
         Main entry point: scrape jobs from one or more platforms.
-
-        Args:
-            keyword: Search keyword (e.g. "Python Developer")
-            location: Location filter (e.g. "Lahore", "Karachi")
-            job_type: Job type filter ("Full-time", "Part-time", "Internship", etc.)
-            experience_level: Experience level filter
-            platforms: List of platforms to scrape (default: ["indeed", "linkedin"])
-            proxies: Optional proxy list for rotation
-            max_pages: Maximum search pages to scrape per platform
-
-        Returns:
-            dict with:
-              - status (str): "completed" | "partial" | "failed"
-              - jobs (list[dict]): List of standardised job records
-              - total_found (int): Total jobs found
-              - by_platform (dict): Count per platform
-              - errors (list[str]): Any error messages
-              - scraped_at (str): ISO timestamp
         """
         if platforms is None:
             platforms = ["indeed", "linkedin"]
@@ -124,9 +115,9 @@ class JobScrapingAgent:
             f"job_type='{job_type}', platforms={platforms}"
         )
 
-        all_jobs: list[dict] = []
-        errors: list[str] = []
-        by_platform: dict[str, int] = {}
+        all_jobs: List[dict] = []
+        errors: List[str] = []
+        by_platform: dict = {}
 
         for platform in platforms:
             try:
@@ -146,7 +137,6 @@ class JobScrapingAgent:
                         job_type=job_type,
                         experience_level=experience_level,
                         proxies=active_proxies,
-
                         max_pages=max_pages,
                     )
                 else:
@@ -172,118 +162,125 @@ class JobScrapingAgent:
         else:
             status = "completed"
 
-        if self.client:
-            all_jobs = [self.enhance_job_with_llm(j) for j in all_jobs]
+        # Enhance scraped listings with LLM features
+        enhanced_jobs: List[dict] = []
+        for job in all_jobs:
+            try:
+                enhanced_job = self.enhance_job_with_llm(job)
+                # Validate schema output using Pydantic
+                validated = ScrapedJobSchema.model_validate(enhanced_job)
+                enhanced_jobs.append(validated.model_dump())
+            except Exception as exc:
+                logger.warning(f"Enhancement or validation failed for job '{job.get('title')}': {exc}")
+                # Fallback to unenhanced standardized job to avoid pipeline crash
+                try:
+                    job["_llm_enhanced"] = False
+                    validated = ScrapedJobSchema.model_validate(job)
+                    enhanced_jobs.append(validated.model_dump())
+                except Exception as val_exc:
+                    logger.error(f"Critical validation failure on fallback: {val_exc}")
 
         result = {
             "status": status,
-            "jobs": all_jobs,
-            "total_found": len(all_jobs),
+            "jobs": enhanced_jobs,
+            "total_found": len(enhanced_jobs),
             "by_platform": by_platform,
             "errors": errors,
             "scraped_at": datetime.now().isoformat(),
         }
 
-        # Track history
         self.scrape_history.append({
             "keyword": keyword,
             "location": location,
             "job_type": job_type,
-            "total_found": len(all_jobs),
+            "total_found": len(enhanced_jobs),
             "status": status,
             "scraped_at": result["scraped_at"],
         })
 
         logger.info(
-            f"Scrape complete: status={status}, total_jobs={len(all_jobs)}, "
+            f"Scrape complete: status={status}, total_jobs={len(enhanced_jobs)}, "
             f"by_platform={by_platform}, errors={len(errors)}"
         )
         return result
 
+    @retry_with_backoff()
     def enhance_job_with_llm(self, job: dict) -> dict:
         """
-        Use gpt-4o-mini to enhance a job record with better skill extraction
-        and field standardisation.
-
-        Args:
-            job: A standardised job record.
-
-        Returns:
-            Enhanced job record with improved fields.
-
-        Note: Gracefully degrades if OpenAI is unavailable.
+        Use gpt-4o-mini via openai-agents SDK to enhance a job record.
         """
-        if not self.client:
-            logger.warning("OpenAI client not available — skipping LLM enhancement")
+        # Ensure we have our API key loaded
+        if not self.api_key:
+            logger.warning("No API key available for LLM enhancement.")
+            job["_llm_enhanced"] = False
             return job
 
-        try:
-            prompt = f"""Analyse this job listing and extract structured information.
+        # Re-set key in environment just in case
+        if "OPENAI_API_KEY" not in os.environ or os.environ["OPENAI_API_KEY"] != self.api_key:
+            os.environ["OPENAI_API_KEY"] = self.api_key
+
+        prompt = f"""Analyse this job listing and extract structured information.
 
 Job Title: {job.get('title', '')}
 Company: {job.get('company', '')}
 Location: {job.get('location', '')}
 Description: {job.get('description', '')[:2000]}
 
-Return a JSON object with:
-- "required_skills": list of specific technical and soft skills mentioned
-- "salary_range": standardised salary range if mentioned (e.g. "PKR 50,000 - 80,000/month")
-- "experience_level": "entry", "mid", "senior", or "not_specified"
-- "job_category": primary job category (e.g. "Software Engineering", "Data Science")
-- "is_remote": true/false based on description
+Return a JSON object matching this schema definition:
+{{
+  "required_skills": ["list", "of", "skills"],
+  "salary_range": "standardised salary string or null",
+  "experience_level": "entry" | "mid" | "senior" | "not_specified",
+  "job_category": "primary job category string",
+  "is_remote": true | false
+}}
 """
 
-            response = self.client.chat.completions.create(
-                model=self.MODEL,
-                messages=[
-                    {"role": "system", "content": "You are a job listing analyser. Return only valid JSON."},
-                    {"role": "user", "content": prompt},
-                ],
-                temperature=0.1,
-                max_tokens=500,
-                response_format={"type": "json_object"},
+        try:
+            # Call openai-agents SDK Runner to process synchronously
+            run_result = Runner.run_sync(
+                self.sdk_agent,
+                prompt
             )
+            content = run_result.output
 
-            enhanced = json.loads(response.choices[0].message.content)
+            # Strip markdown code blocks if present
+            cleaned_content = content.strip()
+            if cleaned_content.startswith("```"):
+                lines = cleaned_content.splitlines()
+                if len(lines) >= 2:
+                    if lines[0].startswith("```"):
+                        lines = lines[1:]
+                    if lines[-1].startswith("```"):
+                        lines = lines[:-1]
+                cleaned_content = "\n".join(lines).strip()
 
-            # Merge enhanced fields into job record
-            if enhanced.get("required_skills"):
-                job["required_skills"] = enhanced["required_skills"]
-            if enhanced.get("salary_range"):
-                job["salary"] = enhanced["salary_range"]
-            if enhanced.get("experience_level"):
-                job["experience_level"] = enhanced["experience_level"]
-            if enhanced.get("job_category"):
-                job["job_category"] = enhanced["job_category"]
-            if "is_remote" in enhanced:
-                job["is_remote"] = enhanced["is_remote"]
+            enhanced = JobEnhancement.model_validate_json(cleaned_content)
 
+            # Merge validated fields into standard job record
+            job["required_skills"] = list(set(job.get("required_skills", []) + enhanced.required_skills))
+            if enhanced.salary_range:
+                job["salary"] = enhanced.salary_range
+            job["experience_level"] = enhanced.experience_level
+            job["job_category"] = enhanced.job_category
+            job["is_remote"] = enhanced.is_remote
             job["_llm_enhanced"] = True
-            logger.info(f"LLM-enhanced job: {job.get('title', '')}")
+            logger.info(f"LLM-enhanced job via SDK: {job.get('title', '')}")
 
         except Exception as exc:
-            logger.warning(f"LLM enhancement failed for '{job.get('title', '')}': {exc}", exc_info=True)
+            logger.warning(f"LLM enhancement failed for '{job.get('title', '')}': {exc}")
             job["_llm_enhanced"] = False
 
         return job
 
-    def to_json(self, jobs: list[dict]) -> str:
-        """
-        Serialise job list to valid JSON string.
-        All agents return valid JSON for all inputs — never raise an unhandled exception.
-
-        Args:
-            jobs: List of job dicts.
-
-        Returns:
-            JSON string representation.
-        """
+    def to_json(self, jobs: List[dict]) -> str:
+        """Serialise job list to valid JSON string."""
         try:
             return json.dumps(jobs, indent=2, default=str, ensure_ascii=False)
         except Exception as exc:
             logger.error(f"JSON serialisation failed: {exc}", exc_info=True)
             return json.dumps({"error": str(exc), "jobs": []})
 
-    def get_scrape_history(self) -> list[dict]:
+    def get_scrape_history(self) -> List[dict]:
         """Return the agent's scraping history."""
         return self.scrape_history
