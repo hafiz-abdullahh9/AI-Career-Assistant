@@ -1,0 +1,169 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Stage 1: dependency builder (shared pattern with main Dockerfile)
+# ─────────────────────────────────────────────────────────────────────────────
+# Chrome version pin — update this ARG intentionally when upgrading Chrome.
+# NEVER use google-chrome-stable without a version: it breaks reproducibility
+# and creates Selenium/ChromeDriver version mismatches in production.
+# To find available versions: apt-cache showpkg google-chrome-stable
+ARG CHROME_VERSION=131.0.6778.204-1
+
+FROM python:3.12.4-slim AS builder
+
+LABEL stage="builder"
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gcc \
+    libpq-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /build
+
+COPY pyproject.toml ./
+COPY requirements.txt ./
+
+RUN pip install --upgrade pip \
+    && pip install --prefix=/install .
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Stage 2: Celery worker runtime with Google Chrome + ChromeDriver
+#
+# Chrome version strategy:
+#   - Install google-chrome-stable from Google's official apt repository.
+#   - webdriver-manager (already in project deps) auto-downloads the matching
+#     ChromeDriver version at first invocation, honouring CHROME_BIN.
+#   - The ChromeDriver binary is cached inside the container at:
+#     ~/.wdm/drivers/chromedriver/
+#   - Headless mode is enforced via CHROME_OPTIONS in the application layer.
+# ─────────────────────────────────────────────────────────────────────────────
+FROM python:3.12.4-slim AS production
+
+# Re-declare ARG after FROM so it is visible in this stage
+ARG CHROME_VERSION=131.0.6778.204-1
+
+LABEL maintainer="Member 4 — Application Automation Agent (Celery Worker)" \
+      version="1.0.0" \
+      description="AI Career Assistant — Celery worker with Selenium/Chrome support" \
+      chrome.version="${CHROME_VERSION}"
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PYTHONPATH="/install/lib/python3.12/site-packages:/app" \
+    PATH="/install/bin:$PATH" \
+    # Chrome binary location (used by webdriver-manager and BaseIntegrationAdapter)
+    CHROME_BIN=/usr/bin/google-chrome-stable \
+    # Disable Chrome sandbox — required in rootless containers
+    CHROME_NO_SANDBOX=1 \
+    # Suppress webdriver-manager download progress spam in logs
+    WDM_LOG_LEVEL=0 \
+    # Cache ChromeDriver inside the container filesystem (not /tmp)
+    WDM_LOCAL=1 \
+    # Expose the pinned Chrome version for runtime introspection / healthchecks
+    CHROME_VERSION=${CHROME_VERSION}
+
+# ── System dependencies for Chrome ────────────────────────────────────────────
+# These are the minimal set required by Google Chrome on Debian Bookworm slim.
+# Grouped alphabetically for readability; do NOT remove any — Chrome will
+# silently fail to start with a missing shared library.
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates \
+    fonts-liberation \
+    gnupg \
+    libasound2 \
+    libatk-bridge2.0-0 \
+    libatk1.0-0 \
+    libcups2 \
+    libdbus-1-3 \
+    libdrm2 \
+    libgbm1 \
+    libglib2.0-0 \
+    libgtk-3-0 \
+    libnspr4 \
+    libnss3 \
+    libvulkan1 \
+    libx11-6 \
+    libx11-xcb1 \
+    libxcb1 \
+    libxcb-dri3-0 \
+    libxcomposite1 \
+    libxcursor1 \
+    libxdamage1 \
+    libxext6 \
+    libxfixes3 \
+    libxi6 \
+    libxkbcommon0 \
+    libxrandr2 \
+    libxrender1 \
+    libxss1 \
+    libxtst6 \
+    lsb-release \
+    wget \
+    xdg-utils \
+    && rm -rf /var/lib/apt/lists/*
+
+# ── Install Google Chrome (PINNED VERSION) ────────────────────────────────────
+# Installs a specific, tested Chrome version via CHROME_VERSION build ARG.
+# This ensures:
+#   - Reproducible builds across all environments
+#   - Deterministic ChromeDriver version matching
+#   - No surprise Selenium breakage from silent Chrome upgrades
+#
+# To upgrade Chrome:
+#   1. Find the new version: https://dl.google.com/linux/chrome/deb/dists/stable/main/binary-amd64/Packages
+#   2. Update CHROME_VERSION ARG at the top of this file
+#   3. Rebuild and verify with: google-chrome-stable --version && chromedriver --version
+#
+# apt-mark hold prevents accidental upgrades if apt-get upgrade is ever run
+RUN wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub \
+        | gpg --dearmor -o /usr/share/keyrings/google-chrome-keyring.gpg \
+    && echo "deb [arch=amd64 signed-by=/usr/share/keyrings/google-chrome-keyring.gpg] \
+        http://dl.google.com/linux/chrome/deb/ stable main" \
+        > /etc/apt/sources.list.d/google-chrome.list \
+    && apt-get update \
+    && apt-get install -y --no-install-recommends \
+        google-chrome-stable=${CHROME_VERSION} \
+    && apt-mark hold google-chrome-stable \
+    && rm -rf /var/lib/apt/lists/* \
+    # Smoke-test: confirm pinned Chrome version installed correctly
+    && google-chrome-stable --version
+
+# ── Security: non-root user ────────────────────────────────────────────────────
+# Chrome requires the user to have a writable home directory for its profile cache.
+RUN groupadd -r appuser \
+    && useradd -r -g appuser -d /home/appuser -m -s /sbin/nologin appuser
+
+# ── Install Python dependencies ────────────────────────────────────────────────
+COPY --from=builder /install /install
+
+WORKDIR /app
+
+COPY app/ ./app/
+COPY migrations/ ./migrations/
+COPY scripts/ ./scripts/
+COPY alembic.ini ./
+
+RUN chown -R appuser:appuser /app /home/appuser
+USER appuser
+
+# ── Pre-warm ChromeDriver cache ────────────────────────────────────────────────
+# webdriver-manager downloads the matching ChromeDriver at first use.
+# Running this at build time means:
+#   - No network call on first task execution (faster cold start)
+#   - Build fails early if Chrome/ChromeDriver versions are incompatible
+#   - Driver is cached in /home/appuser/.wdm/ (writable by appuser)
+RUN python -c "from webdriver_manager.chrome import ChromeDriverManager; manager = ChromeDriverManager(); path = manager.install(); print(f'ChromeDriver cached at: {path}')"
+
+# ── Default command ────────────────────────────────────────────────────────────
+# Overridden per-service in docker-compose.yml (worker / beat / flower)
+CMD ["celery", \
+     "-A", "app.tasks.celery_app.celery_app", \
+     "worker", \
+     "--loglevel=info", \
+     "--concurrency=2", \
+     "--queues=high,normal,low", \
+     "--hostname=worker@%h"]

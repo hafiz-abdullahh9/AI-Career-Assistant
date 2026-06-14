@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Job Application Sandbox Form</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 40px;
+            background-color: #f4f6f9;
+        }
+        .form-container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        h2 {
+            margin-top: 0;
+            color: #333;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+            color: #555;
+        }
+        .form-group input[type="text"],
+        .form-group input[type="email"],
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        .form-group textarea {
+            height: 100px;
+            resize: vertical;
+        }
+        .form-group input[type="checkbox"] {
+            margin-right: 10px;
+        }
+        .btn-submit {
+            background-color: #007bff;
+            color: white;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            width: 100%;
+        }
+        .btn-submit:hover {
+            background-color: #0056b3;
+        }
+        #success-message {
+            display: none;
+            background-color: #d4edda;
+            color: #155724;
+            padding: 20px;
+            border-radius: 4px;
+            border: 1px solid #c3e6cb;
+            text-align: center;
+        }
+        .conf-id {
+            font-weight: bold;
+            font-family: monospace;
+            background: #e2e3e5;
+            padding: 2px 6px;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="form-container">
+    <div id="application-form">
+        <h2>Software Engineer Application</h2>
+        <form id="job-app-form" onsubmit="submitForm(event)">
+            <div class="form-group">
+                <label for="first_name">First Name</label>
+                <input type="text" id="first_name" name="first_name" placeholder="John" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="last_name">Last Name</label>
+                <input type="text" id="last_name" name="last_name" placeholder="Doe" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="email">Email Address</label>
+                <input type="email" id="email" name="email" placeholder="john.doe@example.com" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="phone">Phone Number</label>
+                <input type="text" id="phone" name="phone" placeholder="+1234567890">
+            </div>
+
+            <div class="form-group">
+                <label for="linkedin">LinkedIn Profile</label>
+                <input type="text" id="linkedin" name="linkedin" placeholder="https://linkedin.com/in/johndoe">
+            </div>
+
+            <div class="form-group">
+                <label for="portfolio">Portfolio Website</label>
+                <input type="text" id="portfolio" name="portfolio" placeholder="https://johndoe.dev">
+            </div>
+
+            <div class="form-group">
+                <label for="gender">Gender</label>
+                <select id="gender" name="gender">
+                    <option value="">Select...</option>
+                    <option value="male">Male</option>
+                    <option value="female">Female</option>
+                    <option value="other">Other</option>
+                    <option value="decline">Decline to State</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="resume_file">Upload Resume (PDF or DOCX)</label>
+                <input type="file" id="resume_file" name="resume_file" accept=".pdf,.docx" required>
+            </div>
+
+            <div class="form-group">
+                <label for="cover_letter">Cover Letter / Message</label>
+                <textarea id="cover_letter" name="cover_letter" placeholder="Why do you want to join us?"></textarea>
+            </div>
+
+            <div class="form-group" style="display: flex; align-items: center;">
+                <input type="checkbox" id="terms" name="terms" required>
+                <label for="terms" style="margin-bottom: 0; font-weight: normal;">I agree to the terms and conditions</label>
+            </div>
+
+            <button type="submit" id="submit-btn" class="btn-submit">Submit Application</button>
+        </form>
+    </div>
+
+    <div id="success-message">
+        <h2>Application Submitted!</h2>
+        <p>Thank you for applying. Your application has been successfully received.</p>
+        <p>Confirmation ID: <span class="conf-id" id="confirmation-code">CONF-987654321</span></p>
+    </div>
+</div>
+
+<script>
+    function submitForm(event) {
+        event.preventDefault();
+        
+        // Basic form validation check
+        const form = document.getElementById('job-app-form');
+        if (!form.checkValidity()) {
+            form.reportValidity();
+            return;
+        }
+
+        // Hide form and show success message
+        document.getElementById('application-form').style.display = 'none';
+        
+        // Generate a random confirmation ID
+        const randomId = 'CONF-' + Math.floor(100000000 + Math.random() * 900000000);
+        document.getElementById('confirmation-code').innerText = randomId;
+        
+        document.getElementById('success-message').style.display = 'block';
+    }
+</script>
+
+</body>
+</html>

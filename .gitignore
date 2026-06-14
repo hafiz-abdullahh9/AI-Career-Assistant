@@ -1,4 +1,4 @@
-# Node/Next.js/Yarn/JS rules (from HEAD)
+# Node/Next.js/Yarn/JS rules
 /node_modules
 /.pnp
 .pnp.*
@@ -23,7 +23,7 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# Python (from member-2-final)
+# Python
 __pycache__/
 *.py[cod]
 *.pyo
@@ -32,6 +32,7 @@ __pycache__/
 .ruff_cache/
 .coverage
 htmlcov/
+staticfiles/
 
 # Virtual environments
 .venv/

@@ -1,0 +1,66 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: career-assistant-deployment
+  namespace: career-assistant
+  labels:
+    app: career-assistant
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: career-assistant
+  template:
+    metadata:
+      labels:
+        app: career-assistant
+    spec:
+      containers:
+        - name: career-assistant
+          image: career-assistant-backend:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8000
+          resources:
+            requests:
+              cpu: "250m"
+              memory: "256Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
+          envFrom:
+            - configMapRef:
+                name: career-assistant-config
+          env:
+            - name: OPENAI_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: career-assistant-secrets
+                  key: OPENAI_API_KEY
+            - name: GEMINI_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: career-assistant-secrets
+                  key: GEMINI_API_KEY
+            - name: DATABASE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: career-assistant-secrets
+                  key: DATABASE_PASSWORD
+            - name: ENCRYPTION_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: career-assistant-secrets
+                  key: ENCRYPTION_KEY
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 5
+            periodSeconds: 10

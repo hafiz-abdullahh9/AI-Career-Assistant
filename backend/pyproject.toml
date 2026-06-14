@@ -1,0 +1,108 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+
+[project]
+name = "member04-application-automation"
+version = "0.1.0"
+description = "Application Automation Agent — AI Career Assistant Multi-Agent System 2026"
+requires-python = ">=3.12"
+dependencies = [
+    # Web framework
+    "fastapi==0.111.0",
+    "uvicorn[standard]==0.30.1",
+
+    # Database (async)
+    "sqlalchemy[asyncio]==2.0.31",
+    "asyncpg==0.30.0",
+    "psycopg2-binary==2.9.9",
+    "alembic==1.13.2",
+
+    # Redis & task queue
+    "redis[hiredis]==5.0.7",
+    "celery[redis]==5.4.0",
+
+    # Config & validation
+    "pydantic==2.10.3",
+    "pydantic-settings==2.6.1",
+    "python-dotenv==1.0.1",
+
+    # Logging
+    "structlog==24.4.0",
+    "python-json-logger==3.2.1",
+
+    # HTTP client (for internal calls)
+    "httpx==0.27.0",
+    "requests==2.32.3",
+
+    # Browser Automation
+    "selenium==4.22.0",
+    "webdriver-manager==4.0.1",
+
+    # Email
+    "secure-smtplib==0.1.1",
+    "google-api-python-client==2.137.0",
+    "google-auth-oauthlib==1.2.1",
+
+    # CV / Document Processing
+    "pypdf==4.2.0",
+    "python-docx==1.1.2",
+    "pdfplumber==0.11.1",
+
+    # Utilities
+    "python-ulid==3.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest==8.2.2",
+    "pytest-asyncio==0.23.7",
+    "pytest-mock==3.14.0",
+    "pytest-cov==6.0.0",
+    "faker==26.0.0",
+    "httpx==0.27.0",
+    "testcontainers[postgres,redis]==4.8.2",
+    "ruff==0.8.4",
+    "mypy==1.13.0",
+]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["app*"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+ignore = ["E501"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = false
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+addopts = "-v --tb=short"
+markers = [
+    "unit: Fast, fully mocked tests — no real external services required",
+    "integration: Tests that require real postgres and redis services",
+    "selenium: Tests that require Chrome and ChromeDriver",
+    "slow: Tests with long execution time (>5s) — excluded from quick feedback loops",
+    "load: Performance and stress tests — should only run in dedicated load environments",
+    "security: Security-focused tests (auth, RBAC, injection, etc.)",
+]
+filterwarnings = [
+    "error",
+    "ignore::DeprecationWarning",
+    "ignore::PendingDeprecationWarning",
+    "ignore::pytest.PytestUnraisableExceptionWarning",
+]
+
+[tool.coverage.run]
+source = ["app"]
+omit = ["tests/*", "migrations/*"]
