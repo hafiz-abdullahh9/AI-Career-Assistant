@@ -1,0 +1,26 @@
+# AI-Based Career Assistant System — Agent 02 Dependencies
+# Job Scraping & Verification Engineer
+
+# ── Core Framework ──
+fastapi==0.115.12
+uvicorn[standard]==0.34.3
+pydantic==2.11.3
+
+# ── Web Scraping ──
+crawl4ai==0.8.9
+
+# ── Database ──
+aiosqlite==0.21.0
+
+# ── OpenAI (gpt-4o-mini) ──
+openai>=1.30.0
+
+# ── Environment ──
+python-dotenv>=1.0.0
+
+# ── Testing ──
+pytest>=8.0.0
+pytest-asyncio>=0.23.0
+
+# ── Export ──
+openpyxl==3.1.5
