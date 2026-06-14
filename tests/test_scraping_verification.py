@@ -426,10 +426,10 @@ class TestJobVerificationAgent:
     def test_no_hardcoded_api_keys(self):
         """Agents should use environment variables for credentials, not hardcoded keys."""
         agent = JobScrapingAgent()
-        assert agent.api_key == os.environ.get("GEMINI_API_KEY", "")
+        assert agent.api_key == os.environ.get("OPENAI_API_KEY", "")
 
         vagent = JobVerificationAgent()
-        assert vagent.api_key == os.environ.get("GEMINI_API_KEY", "")
+        assert vagent.api_key == os.environ.get("OPENAI_API_KEY", "")
 
 
 # ═══════════════════════════════════════════════════════════════════

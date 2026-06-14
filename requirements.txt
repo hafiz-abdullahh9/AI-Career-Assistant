@@ -19,6 +19,7 @@ openpyxl==3.1.5
 # --- Database & ORM ---
 sqlalchemy==2.0.31
 psycopg2-binary==2.9.12
+asyncpg==0.31.0
 alembic==1.13.2
 
 # --- Caching / Session Store ---
