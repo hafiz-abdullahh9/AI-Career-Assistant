@@ -71,7 +71,9 @@ async def lifespan(app: FastAPI):
         logger.info("redis.connection_verified")
     except Exception as exc:
         logger.error("redis.connection_failed", error=str(exc))
-        raise
+        if settings.app_env == "production":
+            raise
+        logger.warning("redis.connection_failed_non_fatal", message="Proceeding without Redis (non-production environment)")
 
     logger.info("application.ready")
 
