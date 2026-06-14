@@ -1,0 +1,27 @@
+{
+  "name": "Lever",
+  "supported_domains": ["lever.co", "jobs.lever.co"],
+  "selectors": {
+    "name": "css:input[name='name']",
+    "email": "css:input[name='email']",
+    "phone": "css:input[name='phone']",
+    "org": "css:input[name='org']",
+    "resume": "css:input[type='file'][name='resume']",
+    "linkedin": "css:input[name='urls[LinkedIn]']",
+    "github": "css:input[name='urls[GitHub]']",
+    "portfolio": "css:input[name='urls[Portfolio]']"
+  },
+  "required_fields": ["name", "email", "resume"],
+  "submit_button": "css:button[type='submit']",
+  "success_indicators": [
+    "thank you",
+    "application submitted",
+    "success",
+    "confirmation",
+    "received"
+  ],
+  "confirmation_extraction": {
+    "selectors": ["#confirmation-code", ".confirmation-id"],
+    "regex": "(CONF-[0-9]+|CONF[0-9]+|Confirmation\\s+(?:ID|Code|Number|#)\\s*:\\s*([A-Za-z0-9\\-]+))"
+  }
+}

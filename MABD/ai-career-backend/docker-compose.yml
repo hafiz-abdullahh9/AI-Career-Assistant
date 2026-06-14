@@ -13,6 +13,11 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U career_user -d career_assistant"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   web:
     build: .
@@ -24,8 +29,11 @@ services:
       - .env
     environment:
       - DATABASE_URL=postgresql://career_user:career_password@db:5432/career_assistant
+      - DJANGO_SETTINGS_MODULE=career_assistant.settings
+      - DEBUG=False
     depends_on:
-      - db
+      db:
+        condition: service_healthy
 
 volumes:
   postgres_data:

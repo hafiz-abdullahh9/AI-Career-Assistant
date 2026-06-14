@@ -1,0 +1,64 @@
+# docker-compose.override.yml — Local Development Overrides
+#
+# This file is automatically merged with docker-compose.yml by Docker Compose
+# when you run `docker compose up` without specifying a -f flag.
+# It adds developer-friendly settings (live reload, bind mounts, debug ports)
+# that must NEVER be present in the production compose file.
+#
+# To run in pure production mode (without these overrides):
+#   docker compose -f docker-compose.yml up
+
+services:
+
+  # ── Development API: live reload + bind mount ────────────────────────────────
+  api:
+    volumes:
+      # Bind mount app code for instant hot-reload without image rebuild.
+      # Mirrors the container path defined in the production Dockerfile.
+      - ./app:/app/app
+      - ./migrations:/app/migrations
+      - ./scripts:/app/scripts
+      - ./alembic.ini:/app/alembic.ini
+    environment:
+      LOG_LEVEL: DEBUG
+    command: >
+      uvicorn app.main:app
+      --host 0.0.0.0
+      --port 8004
+      --reload
+      --reload-dir /app/app
+
+  # ── Development Worker: bind mount for fast iteration ───────────────────────
+  worker:
+    volumes:
+      - ./app:/app/app
+      - ./scripts:/app/scripts
+    environment:
+      LOG_LEVEL: DEBUG
+    command: >
+      celery -A app.tasks.celery_app.celery_app worker
+      --loglevel=debug
+      --concurrency=2
+      --queues=high,normal,low
+      --hostname=worker-dev@%h
+      --max-tasks-per-child=50
+
+  # ── Development Beat ─────────────────────────────────────────────────────────
+  beat:
+    volumes:
+      - ./app:/app/app
+    environment:
+      LOG_LEVEL: DEBUG
+
+  # ── PostgreSQL: expose admin port for local DB tools ─────────────────────────
+  postgres:
+    environment:
+      POSTGRES_HOST_AUTH_METHOD: trust  # Passwordless local connections
+
+  # ── Redis: expose CLI port ───────────────────────────────────────────────────
+  redis:
+    command: >
+      redis-server
+      --maxmemory 128mb
+      --maxmemory-policy allkeys-lru
+      --loglevel debug

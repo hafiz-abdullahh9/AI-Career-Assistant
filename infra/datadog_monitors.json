@@ -1,0 +1,46 @@
+{
+  "monitors": [
+    {
+      "name": "AGENT-02: Queue Depth Exceeded Threshold",
+      "type": "metric alert",
+      "query": "max(last_5m):sum:redis.queue.length{project:agent-02-career-assistant} > 500",
+      "message": "{{#is_alert}}@pagerduty-agent-02-oncall CRITICAL: Agent task queue depth is currently {{value}}. This exceeds the SLA threshold of 500. Immediate scaling scaling assessment required.{{/is_alert}}",
+      "options": {
+        "thresholds": {
+          "critical": 500,
+          "warning": 400
+        },
+        "notify_no_data": false,
+        "evaluation_delay": 60
+      }
+    },
+    {
+      "name": "AGENT-02: API High Error Rate Alert",
+      "type": "query alert",
+      "query": "sum(last_5m):sum:agent.run.errors{project:agent-02-career-assistant}.as_count() / sum:agent.run.total{project:agent-02-career-assistant}.as_count() * 100 > 5",
+      "message": "{{#is_alert}}@pagerduty-agent-02-oncall CRITICAL: Agent execution error rate is currently {{value}}% (threshold is 5%). Check logs for API rate-limiting or service disruptions immediately.{{/is_alert}}",
+      "options": {
+        "thresholds": {
+          "critical": 5.0,
+          "warning": 3.0
+        },
+        "notify_no_data": false,
+        "evaluation_delay": 60
+      }
+    },
+    {
+      "name": "AGENT-02: P95 Execution Latency SLA Breach",
+      "type": "metric alert",
+      "query": "percentile(last_5m):p95:agent.run.duration{project:agent-02-career-assistant} > 30",
+      "message": "{{#is_alert}}@pagerduty-agent-02-oncall WARNING: Agent P95 latency is currently {{value}}s, which exceeds the SLA limit of 30 seconds. System queries might be degraded.{{/is_alert}}",
+      "options": {
+        "thresholds": {
+          "critical": 30.0,
+          "warning": 20.0
+        },
+        "notify_no_data": false,
+        "evaluation_delay": 60
+      }
+    }
+  ]
+}

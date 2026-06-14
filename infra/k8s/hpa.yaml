@@ -1,0 +1,30 @@
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: career-assistant-hpa
+  namespace: career-assistant
+  labels:
+    app: career-assistant
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: career-assistant-deployment
+  minReplicas: 2
+  maxReplicas: 10
+  metrics:
+    # Scale trigger based on Redis/Celery queue depth (custom/external metric mapped via Prometheus Adapter or KEDA)
+    - type: External
+      external:
+        metric:
+          name: celery_queue_depth
+        target:
+          type: Value
+          averageValue: "50"
+    # Fallback scale trigger based on resource consumption (CPU Utilization)
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70

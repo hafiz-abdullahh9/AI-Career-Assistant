@@ -1,0 +1,13 @@
+{
+  "$schema": "https://schema.railway.app/railway.schema.json",
+  "build": {
+    "builder": "NIXPACKS"
+  },
+  "deploy": {
+    "startCommand": "python manage.py migrate --noinput && gunicorn career_assistant.wsgi:application --bind 0.0.0.0:$PORT --workers 3 --timeout 120",
+    "healthcheckPath": "/",
+    "healthcheckTimeout": 30,
+    "restartPolicyType": "ON_FAILURE",
+    "restartPolicyMaxRetries": 3
+  }
+}
