@@ -1,0 +1,497 @@
+{
+  "Python": {
+    "synonyms": ["python3", "python 3", "python programming"],
+    "related": ["Django", "Flask", "FastAPI", "Data Science", "Machine Learning"],
+    "category": "Programming Languages"
+  },
+  "JavaScript": {
+    "synonyms": ["JS", "javascript", "ECMAScript", "ES6", "ES2015"],
+    "related": ["TypeScript", "React", "Node.js", "Vue.js", "Angular", "Frontend Development"],
+    "category": "Programming Languages"
+  },
+  "TypeScript": {
+    "synonyms": ["TS", "typescript"],
+    "related": ["JavaScript", "React", "Angular", "Node.js", "Frontend Development"],
+    "category": "Programming Languages"
+  },
+  "Java": {
+    "synonyms": ["java programming", "JDK", "J2EE"],
+    "related": ["Spring", "Spring Boot", "Kotlin", "Android Development", "Backend Development"],
+    "category": "Programming Languages"
+  },
+  "C++": {
+    "synonyms": ["cpp", "c plus plus", "cplusplus"],
+    "related": ["C", "Systems Programming", "Embedded Systems", "Game Development"],
+    "category": "Programming Languages"
+  },
+  "C#": {
+    "synonyms": ["csharp", "c sharp", "C-Sharp"],
+    "related": [".NET", "ASP.NET", "Unity", "Azure", "Backend Development"],
+    "category": "Programming Languages"
+  },
+  "Go": {
+    "synonyms": ["Golang", "go language"],
+    "related": ["Microservices", "Cloud Native", "Kubernetes", "Backend Development"],
+    "category": "Programming Languages"
+  },
+  "Rust": {
+    "synonyms": ["rust-lang", "rust programming"],
+    "related": ["Systems Programming", "WebAssembly", "C++"],
+    "category": "Programming Languages"
+  },
+  "Ruby": {
+    "synonyms": ["ruby programming"],
+    "related": ["Ruby on Rails", "Backend Development", "Web Development"],
+    "category": "Programming Languages"
+  },
+  "PHP": {
+    "synonyms": ["php programming", "PHP 8"],
+    "related": ["Laravel", "WordPress", "Web Development", "Backend Development"],
+    "category": "Programming Languages"
+  },
+  "Swift": {
+    "synonyms": ["swift programming", "Apple Swift"],
+    "related": ["iOS Development", "macOS Development", "Xcode", "Mobile Development"],
+    "category": "Programming Languages"
+  },
+  "Kotlin": {
+    "synonyms": ["kotlin programming"],
+    "related": ["Android Development", "Java", "Mobile Development", "Spring Boot"],
+    "category": "Programming Languages"
+  },
+  "R": {
+    "synonyms": ["R programming", "R language", "R-project"],
+    "related": ["Statistics", "Data Science", "Data Analysis", "Machine Learning"],
+    "category": "Programming Languages"
+  },
+  "Scala": {
+    "synonyms": ["scala programming"],
+    "related": ["Apache Spark", "Big Data", "JVM", "Functional Programming"],
+    "category": "Programming Languages"
+  },
+  "SQL": {
+    "synonyms": ["Structured Query Language", "sql queries"],
+    "related": ["PostgreSQL", "MySQL", "Database Management", "Data Analysis"],
+    "category": "Database"
+  },
+  "PostgreSQL": {
+    "synonyms": ["Postgres", "psql", "pg"],
+    "related": ["SQL", "Database Management", "Backend Development", "Data Engineering"],
+    "category": "Database"
+  },
+  "MySQL": {
+    "synonyms": ["my sql", "mysql database"],
+    "related": ["SQL", "Database Management", "Backend Development", "PHP"],
+    "category": "Database"
+  },
+  "MongoDB": {
+    "synonyms": ["Mongo", "mongo db"],
+    "related": ["NoSQL", "Database Management", "Node.js", "Backend Development"],
+    "category": "Database"
+  },
+  "Redis": {
+    "synonyms": ["redis cache", "redis db"],
+    "related": ["Caching", "Database Management", "Backend Development", "Microservices"],
+    "category": "Database"
+  },
+  "Elasticsearch": {
+    "synonyms": ["ES", "elastic search", "elastic"],
+    "related": ["Search Engine", "Kibana", "Logstash", "ELK Stack", "Data Engineering"],
+    "category": "Database"
+  },
+  "React": {
+    "synonyms": ["ReactJS", "React.js", "react js"],
+    "related": ["JavaScript", "Frontend Development", "Redux", "Next.js", "Web Development"],
+    "category": "Frontend"
+  },
+  "Angular": {
+    "synonyms": ["AngularJS", "Angular.js", "angular framework"],
+    "related": ["TypeScript", "Frontend Development", "RxJS", "Web Development"],
+    "category": "Frontend"
+  },
+  "Vue.js": {
+    "synonyms": ["Vue", "VueJS", "vue js"],
+    "related": ["JavaScript", "Frontend Development", "Nuxt.js", "Web Development"],
+    "category": "Frontend"
+  },
+  "Next.js": {
+    "synonyms": ["NextJS", "next js"],
+    "related": ["React", "Frontend Development", "Full Stack", "Server-Side Rendering"],
+    "category": "Frontend"
+  },
+  "HTML": {
+    "synonyms": ["HTML5", "html markup"],
+    "related": ["CSS", "JavaScript", "Frontend Development", "Web Development"],
+    "category": "Frontend"
+  },
+  "CSS": {
+    "synonyms": ["CSS3", "Cascading Style Sheets", "stylesheets"],
+    "related": ["HTML", "SASS", "LESS", "Tailwind CSS", "Frontend Development"],
+    "category": "Frontend"
+  },
+  "Node.js": {
+    "synonyms": ["NodeJS", "node js", "node"],
+    "related": ["JavaScript", "Express.js", "Backend Development", "Full Stack"],
+    "category": "Backend"
+  },
+  "Django": {
+    "synonyms": ["django framework", "django python"],
+    "related": ["Python", "Backend Development", "Web Development", "REST API"],
+    "category": "Backend"
+  },
+  "Flask": {
+    "synonyms": ["flask framework", "flask python"],
+    "related": ["Python", "Backend Development", "REST API", "Microservices"],
+    "category": "Backend"
+  },
+  "FastAPI": {
+    "synonyms": ["fast api", "fastapi python"],
+    "related": ["Python", "Backend Development", "REST API", "Microservices"],
+    "category": "Backend"
+  },
+  "Spring Boot": {
+    "synonyms": ["SpringBoot", "spring boot framework"],
+    "related": ["Java", "Backend Development", "Microservices", "REST API"],
+    "category": "Backend"
+  },
+  "Express.js": {
+    "synonyms": ["Express", "ExpressJS", "express js"],
+    "related": ["Node.js", "JavaScript", "Backend Development", "REST API"],
+    "category": "Backend"
+  },
+  "REST API": {
+    "synonyms": ["RESTful API", "REST", "RESTful", "REST APIs"],
+    "related": ["Backend Development", "API Design", "FastAPI", "Express.js"],
+    "category": "Backend"
+  },
+  "GraphQL": {
+    "synonyms": ["graph ql"],
+    "related": ["API Design", "Apollo", "REST API", "Backend Development"],
+    "category": "Backend"
+  },
+  "AWS": {
+    "synonyms": ["Amazon Web Services", "amazon aws", "AWS Cloud"],
+    "related": ["Cloud Computing", "EC2", "S3", "Lambda", "DevOps"],
+    "category": "Cloud & DevOps"
+  },
+  "Azure": {
+    "synonyms": ["Microsoft Azure", "Azure Cloud"],
+    "related": ["Cloud Computing", ".NET", "DevOps", "C#"],
+    "category": "Cloud & DevOps"
+  },
+  "Google Cloud": {
+    "synonyms": ["GCP", "Google Cloud Platform", "google cloud"],
+    "related": ["Cloud Computing", "BigQuery", "Kubernetes", "DevOps"],
+    "category": "Cloud & DevOps"
+  },
+  "Docker": {
+    "synonyms": ["docker containers", "docker containerization"],
+    "related": ["Kubernetes", "DevOps", "Containerization", "CI/CD", "Microservices"],
+    "category": "Cloud & DevOps"
+  },
+  "Kubernetes": {
+    "synonyms": ["K8s", "k8s", "kube"],
+    "related": ["Docker", "DevOps", "Container Orchestration", "Cloud Native", "Microservices"],
+    "category": "Cloud & DevOps"
+  },
+  "Terraform": {
+    "synonyms": ["terraform iac", "hashicorp terraform"],
+    "related": ["Infrastructure as Code", "DevOps", "AWS", "Azure", "Cloud Computing"],
+    "category": "Cloud & DevOps"
+  },
+  "CI/CD": {
+    "synonyms": ["CICD", "Continuous Integration", "Continuous Deployment", "CI CD"],
+    "related": ["DevOps", "Jenkins", "GitHub Actions", "GitLab CI", "Docker"],
+    "category": "Cloud & DevOps"
+  },
+  "Jenkins": {
+    "synonyms": ["jenkins ci", "jenkins pipeline"],
+    "related": ["CI/CD", "DevOps", "Build Automation"],
+    "category": "Cloud & DevOps"
+  },
+  "Git": {
+    "synonyms": ["git version control", "git vcs"],
+    "related": ["GitHub", "GitLab", "Version Control", "DevOps"],
+    "category": "Cloud & DevOps"
+  },
+  "Linux": {
+    "synonyms": ["linux os", "GNU/Linux", "unix-like"],
+    "related": ["Bash", "Shell Scripting", "System Administration", "DevOps"],
+    "category": "Cloud & DevOps"
+  },
+  "Machine Learning": {
+    "synonyms": ["ML", "machine learning engineering"],
+    "related": ["Deep Learning", "Data Science", "Python", "TensorFlow", "PyTorch", "AI"],
+    "category": "AI & Data Science"
+  },
+  "Deep Learning": {
+    "synonyms": ["DL", "deep neural networks"],
+    "related": ["Machine Learning", "TensorFlow", "PyTorch", "Neural Networks", "AI"],
+    "category": "AI & Data Science"
+  },
+  "TensorFlow": {
+    "synonyms": ["tf", "tensor flow"],
+    "related": ["Machine Learning", "Deep Learning", "Python", "Keras", "AI"],
+    "category": "AI & Data Science"
+  },
+  "PyTorch": {
+    "synonyms": ["pytorch framework", "torch"],
+    "related": ["Machine Learning", "Deep Learning", "Python", "AI"],
+    "category": "AI & Data Science"
+  },
+  "Natural Language Processing": {
+    "synonyms": ["NLP", "text processing", "text analytics"],
+    "related": ["Machine Learning", "Deep Learning", "Python", "SpaCy", "NLTK"],
+    "category": "AI & Data Science"
+  },
+  "Computer Vision": {
+    "synonyms": ["CV", "image recognition", "image processing"],
+    "related": ["Deep Learning", "OpenCV", "TensorFlow", "PyTorch"],
+    "category": "AI & Data Science"
+  },
+  "Data Science": {
+    "synonyms": ["data science engineering", "DS"],
+    "related": ["Machine Learning", "Python", "R", "Statistics", "Data Analysis"],
+    "category": "AI & Data Science"
+  },
+  "Data Analysis": {
+    "synonyms": ["data analytics", "analytics"],
+    "related": ["Data Science", "SQL", "Python", "Excel", "Tableau", "Power BI"],
+    "category": "AI & Data Science"
+  },
+  "Data Engineering": {
+    "synonyms": ["data eng", "data pipeline engineering"],
+    "related": ["Apache Spark", "Kafka", "ETL", "SQL", "Python", "Big Data"],
+    "category": "AI & Data Science"
+  },
+  "Apache Spark": {
+    "synonyms": ["Spark", "PySpark", "spark framework"],
+    "related": ["Big Data", "Data Engineering", "Scala", "Python", "Hadoop"],
+    "category": "AI & Data Science"
+  },
+  "Pandas": {
+    "synonyms": ["pandas library", "python pandas"],
+    "related": ["Python", "Data Analysis", "Data Science", "NumPy"],
+    "category": "AI & Data Science"
+  },
+  "NumPy": {
+    "synonyms": ["numpy library", "python numpy"],
+    "related": ["Python", "Data Science", "Pandas", "Scientific Computing"],
+    "category": "AI & Data Science"
+  },
+  "Tableau": {
+    "synonyms": ["tableau software", "tableau desktop"],
+    "related": ["Data Visualization", "Data Analysis", "Business Intelligence"],
+    "category": "AI & Data Science"
+  },
+  "Power BI": {
+    "synonyms": ["PowerBI", "Microsoft Power BI"],
+    "related": ["Data Visualization", "Data Analysis", "Business Intelligence", "Excel"],
+    "category": "AI & Data Science"
+  },
+  "Agile": {
+    "synonyms": ["Agile methodology", "Agile development", "agile project management"],
+    "related": ["Scrum", "Kanban", "Project Management", "JIRA"],
+    "category": "Methodologies"
+  },
+  "Scrum": {
+    "synonyms": ["scrum framework", "scrum methodology"],
+    "related": ["Agile", "Project Management", "Sprint Planning", "JIRA"],
+    "category": "Methodologies"
+  },
+  "JIRA": {
+    "synonyms": ["Atlassian JIRA", "jira software"],
+    "related": ["Agile", "Scrum", "Project Management", "Issue Tracking"],
+    "category": "Tools"
+  },
+  "Project Management": {
+    "synonyms": ["PM", "project mgmt"],
+    "related": ["Agile", "Scrum", "JIRA", "Leadership", "Team Management"],
+    "category": "Soft Skills"
+  },
+  "Leadership": {
+    "synonyms": ["team leadership", "people leadership"],
+    "related": ["Team Management", "Project Management", "Communication"],
+    "category": "Soft Skills"
+  },
+  "Communication": {
+    "synonyms": ["communication skills", "verbal communication", "written communication"],
+    "related": ["Leadership", "Presentation", "Team Management"],
+    "category": "Soft Skills"
+  },
+  "Problem Solving": {
+    "synonyms": ["problem-solving", "analytical thinking", "critical thinking"],
+    "related": ["Communication", "Leadership", "Decision Making"],
+    "category": "Soft Skills"
+  },
+  "Cybersecurity": {
+    "synonyms": ["cyber security", "information security", "InfoSec"],
+    "related": ["Network Security", "Penetration Testing", "Cryptography", "SOC"],
+    "category": "Security"
+  },
+  "Penetration Testing": {
+    "synonyms": ["pen testing", "ethical hacking", "pentest"],
+    "related": ["Cybersecurity", "Network Security", "Kali Linux"],
+    "category": "Security"
+  },
+  "Blockchain": {
+    "synonyms": ["blockchain technology", "distributed ledger"],
+    "related": ["Cryptocurrency", "Smart Contracts", "Solidity", "Web3"],
+    "category": "Emerging Tech"
+  },
+  "iOS Development": {
+    "synonyms": ["iOS dev", "iPhone development"],
+    "related": ["Swift", "Mobile Development", "Xcode", "Apple"],
+    "category": "Mobile"
+  },
+  "Android Development": {
+    "synonyms": ["Android dev", "android app development"],
+    "related": ["Kotlin", "Java", "Mobile Development", "Android Studio"],
+    "category": "Mobile"
+  },
+  "Mobile Development": {
+    "synonyms": ["mobile dev", "mobile app development"],
+    "related": ["iOS Development", "Android Development", "React Native", "Flutter"],
+    "category": "Mobile"
+  },
+  "React Native": {
+    "synonyms": ["ReactNative", "react native framework"],
+    "related": ["React", "Mobile Development", "JavaScript", "Cross-Platform"],
+    "category": "Mobile"
+  },
+  "Flutter": {
+    "synonyms": ["flutter framework", "flutter dart"],
+    "related": ["Dart", "Mobile Development", "Cross-Platform", "iOS Development"],
+    "category": "Mobile"
+  },
+  "UI/UX Design": {
+    "synonyms": ["UI Design", "UX Design", "User Interface Design", "User Experience Design", "UI UX"],
+    "related": ["Figma", "Adobe XD", "Frontend Development", "Web Design"],
+    "category": "Design"
+  },
+  "Figma": {
+    "synonyms": ["figma design", "figma tool"],
+    "related": ["UI/UX Design", "Web Design", "Prototyping"],
+    "category": "Design"
+  },
+  "Frontend Development": {
+    "synonyms": ["front-end development", "front end dev", "frontend dev"],
+    "related": ["React", "Angular", "Vue.js", "HTML", "CSS", "JavaScript"],
+    "category": "Development"
+  },
+  "Backend Development": {
+    "synonyms": ["back-end development", "back end dev", "backend dev", "server-side development"],
+    "related": ["Node.js", "Django", "FastAPI", "Spring Boot", "REST API"],
+    "category": "Development"
+  },
+  "Full Stack": {
+    "synonyms": ["Full Stack Development", "full-stack", "fullstack"],
+    "related": ["Frontend Development", "Backend Development", "JavaScript", "Python"],
+    "category": "Development"
+  },
+  "DevOps": {
+    "synonyms": ["dev ops", "devops engineering"],
+    "related": ["CI/CD", "Docker", "Kubernetes", "AWS", "Linux", "Terraform"],
+    "category": "Cloud & DevOps"
+  },
+  "Microservices": {
+    "synonyms": ["microservice architecture", "micro services"],
+    "related": ["Docker", "Kubernetes", "REST API", "Backend Development"],
+    "category": "Architecture"
+  },
+  "System Design": {
+    "synonyms": ["systems design", "system architecture"],
+    "related": ["Microservices", "Distributed Systems", "Backend Development"],
+    "category": "Architecture"
+  },
+  "Testing": {
+    "synonyms": ["software testing", "QA", "quality assurance"],
+    "related": ["Unit Testing", "Integration Testing", "Selenium", "pytest"],
+    "category": "Quality"
+  },
+  "Unit Testing": {
+    "synonyms": ["unit tests"],
+    "related": ["Testing", "pytest", "JUnit", "TDD"],
+    "category": "Quality"
+  },
+  "Selenium": {
+    "synonyms": ["selenium webdriver", "selenium testing"],
+    "related": ["Testing", "Web Automation", "Python", "JavaScript"],
+    "category": "Quality"
+  },
+  "Excel": {
+    "synonyms": ["Microsoft Excel", "MS Excel", "spreadsheets"],
+    "related": ["Data Analysis", "VBA", "Power BI"],
+    "category": "Tools"
+  },
+  "Kafka": {
+    "synonyms": ["Apache Kafka", "kafka messaging"],
+    "related": ["Data Engineering", "Event Streaming", "Microservices", "Big Data"],
+    "category": "Data Engineering"
+  },
+  "ETL": {
+    "synonyms": ["Extract Transform Load", "data pipeline"],
+    "related": ["Data Engineering", "SQL", "Apache Spark", "Data Warehousing"],
+    "category": "Data Engineering"
+  },
+  "Business Intelligence": {
+    "synonyms": ["BI", "business analytics"],
+    "related": ["Data Analysis", "Tableau", "Power BI", "SQL"],
+    "category": "Business"
+  },
+  "SAP": {
+    "synonyms": ["SAP ERP", "SAP software"],
+    "related": ["ERP", "Business Intelligence", "Enterprise Software"],
+    "category": "Enterprise"
+  },
+  "Salesforce": {
+    "synonyms": ["SFDC", "salesforce crm"],
+    "related": ["CRM", "Cloud Computing", "Business Development"],
+    "category": "Enterprise"
+  },
+  "Cloud Computing": {
+    "synonyms": ["cloud services", "cloud infrastructure"],
+    "related": ["AWS", "Azure", "Google Cloud", "DevOps"],
+    "category": "Cloud & DevOps"
+  },
+  "API Design": {
+    "synonyms": ["API development", "API architecture"],
+    "related": ["REST API", "GraphQL", "Backend Development"],
+    "category": "Development"
+  },
+  "Distributed Systems": {
+    "synonyms": ["distributed computing"],
+    "related": ["System Design", "Microservices", "Cloud Computing"],
+    "category": "Architecture"
+  },
+  "Big Data": {
+    "synonyms": ["big data analytics", "large-scale data"],
+    "related": ["Apache Spark", "Hadoop", "Data Engineering", "Kafka"],
+    "category": "Data Engineering"
+  },
+  "Statistics": {
+    "synonyms": ["statistical analysis", "statistical methods"],
+    "related": ["Data Science", "R", "Python", "Machine Learning"],
+    "category": "AI & Data Science"
+  },
+  "Cryptography": {
+    "synonyms": ["encryption", "crypto"],
+    "related": ["Cybersecurity", "Blockchain", "Network Security"],
+    "category": "Security"
+  },
+  "Network Security": {
+    "synonyms": ["network sec", "network protection"],
+    "related": ["Cybersecurity", "Penetration Testing", "Firewall"],
+    "category": "Security"
+  },
+  "Technical Writing": {
+    "synonyms": ["tech writing", "documentation"],
+    "related": ["Communication", "Documentation", "API Design"],
+    "category": "Soft Skills"
+  },
+  "Presentation": {
+    "synonyms": ["presentation skills", "public speaking"],
+    "related": ["Communication", "Leadership", "Technical Writing"],
+    "category": "Soft Skills"
+  }
+}
