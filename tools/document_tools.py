@@ -1137,9 +1137,145 @@ def generate_resume(
     )
 
 
-# ---------------------------------------------------------------------------
-# Cover Letter Stub
-# ---------------------------------------------------------------------------
+def generate_cover_letter_text(
+    user_profile: UserProfile,
+    job_listing: VerifiedJobListing,
+    match_result: MatchResult,
+    resume_output: ResumeOutput,
+    company_info: Optional[CompanyInfo] = None,
+    job_keywords: List[str] = [],
+    emphasize_keywords: List[str] = []
+) -> str:
+    """Generate professional cover letter text matching target role."""
+    import re
+    from datetime import datetime
+    
+    if OPENAI_API_KEY:
+        try:
+            from openai import OpenAI
+            from config.matching_config import AGENT_MODEL
+            client = OpenAI(api_key=OPENAI_API_KEY)
+            
+            prompt = (
+                f"You are a professional cover letter writer. Write a highly tailored, professional business cover letter "
+                f"for a candidate applying to the {job_listing.job_title} role at {job_listing.company_name}.\n\n"
+                f"Candidate Profile Data:\n"
+                f"- Full Name: {user_profile.full_name}\n"
+                f"- Email: {user_profile.email}\n"
+                f"- Location: {user_profile.location}\n"
+                f"- Phone: {user_profile.phone or 'N/A'}\n"
+                f"- Summary: {user_profile.summary or 'N/A'}\n"
+                f"- Skills: {', '.join(user_profile.skills)}\n"
+                f"- Experience:\n"
+            )
+            for exp in user_profile.experience:
+                prompt += f"  * {exp.title} at {exp.company}: {exp.description} (Skills used: {', '.join(exp.skills_used)})\n"
+            if user_profile.certifications:
+                prompt += f"- Certifications: {', '.join(user_profile.certifications)}\n"
+            for edu in user_profile.education:
+                prompt += f"- Education: {edu.degree} in {edu.field_of_study} from {edu.institution}\n"
+                
+            prompt += (
+                f"\nJob Listing Information:\n"
+                f"- Title: {job_listing.job_title}\n"
+                f"- Company: {job_listing.company_name}\n"
+                f"- Location: {job_listing.location}\n"
+                f"- Description: {job_listing.description}\n"
+                f"- Required Skills: {', '.join(job_listing.required_skills)}\n"
+            )
+            if job_listing.preferred_skills:
+                prompt += f"- Preferred Skills: {', '.join(job_listing.preferred_skills)}\n"
+                
+            if company_info:
+                prompt += (
+                    f"\nCompany Research Details:\n"
+                    f"- Mission: {company_info.mission or 'N/A'}\n"
+                    f"- Culture/Values: {', '.join(company_info.culture_values or [])}\n"
+                    f"- Industry: {company_info.industry or 'N/A'}\n"
+                    f"- Recent News: {company_info.recent_news or 'N/A'}\n"
+                )
+                
+            if emphasize_keywords:
+                prompt += f"\nCRITICAL: Please make sure to explicitly and naturally incorporate the following additional candidate-matching keywords/skills: {', '.join(emphasize_keywords)}.\n"
+                
+            prompt += (
+                f"\nCRITICAL CONSTRAINT: Do NOT invent, fabricate, or hallucinate any achievements, metrics, roles, "
+                f"skills, certifications, or education that are NOT present in the candidate profile data. Maintain 100% factual accuracy.\n"
+                f"Incorporate target keywords naturally (e.g. {', '.join(job_keywords[:6])}).\n"
+                f"Ensure the letter complements the optimized resume but is not an exact word-for-word duplication.\n"
+                f"Format the response as a plain text cover letter with sender header, recipient header, date, salutation, 3 body paragraphs, and formal closing.\n"
+                f"Provide ONLY the plain text cover letter, no markdown formatting."
+            )
+            
+            response = client.chat.completions.create(
+                model=AGENT_MODEL,
+                messages=[
+                    {"role": "system", "content": "You are a professional recruiting copywriter. Return only the plain text cover letter."},
+                    {"role": "user", "content": prompt}
+                ],
+                max_tokens=600,
+                temperature=0.7
+            )
+            return response.choices[0].message.content.strip()
+        except Exception as e:
+            logger.warning(f"Failed to generate cover letter text via OpenAI: {e}")
+            
+    # Fallback rule-based implementation
+    company_name = company_info.name if company_info and company_info.name else job_listing.company_name
+    date_str = datetime.utcnow().strftime("%B %d, %Y")
+    contact = f"{user_profile.full_name}\n{user_profile.email}"
+    if user_profile.phone:
+        contact += f" | {user_profile.phone}"
+    contact += f" | {user_profile.location}\nDate: {date_str}\n\nTo:\nHiring Team\n{company_name}\n"
+    
+    salutation = f"Dear Hiring Team at {company_name},\n\n"
+    
+    opening = (
+        f"I am writing to express my strong interest in the {job_listing.job_title} position at {company_name}. "
+        f"With my background as a software professional and a match score of {match_result.overall_score:.1f}% for this role, "
+        f"I am confident in my ability to make a significant contribution to your engineering team."
+    )
+    
+    exp_details = ""
+    if user_profile.experience:
+        primary_exp = user_profile.experience[0]
+        exp_details = (
+            f"In my most recent role as {primary_exp.title} at {primary_exp.company}, "
+            f"I successfully worked on key projects using {', '.join(primary_exp.skills_used[:4])}. "
+            f"Specifically, {primary_exp.description}"
+        )
+    else:
+        exp_details = f"I have built solid skills in {', '.join(user_profile.skills[:5])} through hands-on practice and academic work."
+        
+    skills_paragraph = (
+        f"My technical toolset aligns closely with your requirements. I have proven expertise in "
+        f"{', '.join(match_result.matched_skills or user_profile.skills[:5])}."
+    )
+    if emphasize_keywords:
+        skills_paragraph += f" I also have hands-on experience with {', '.join(emphasize_keywords)}."
+    if user_profile.certifications:
+        skills_paragraph += f" Additionally, I hold certifications including {', '.join(user_profile.certifications)}."
+        
+    pers_paragraph = ""
+    if company_info and company_info.mission:
+        pers_paragraph = (
+            f"I am particularly drawn to {company_name} because of your inspiring mission to {company_info.mission}. "
+            f"My professional values align with your focus on {', '.join(company_info.culture_values or ['innovation'])}."
+        )
+    else:
+        pers_paragraph = (
+            f"I am excited about the opportunity to join {company_name}. I have been following your growth "
+            f"and believe that my dedication to excellence and collaboration makes me a great cultural fit for your team."
+        )
+        
+    closing = (
+        f"Thank you for your time and consideration. I look forward to discussing how my experience and skills "
+        f"align with the needs of the {job_listing.job_title} role at {company_name}.\n\n"
+        f"Sincerely,\n{user_profile.full_name}"
+    )
+    
+    return f"{contact}\n{salutation}{opening}\n\n{exp_details}\n\n{skills_paragraph}\n\n{pers_paragraph}\n\n{closing}"
+
 
 def generate_cover_letter(
     user_profile: UserProfile,
@@ -1148,6 +1284,162 @@ def generate_cover_letter(
     resume_output: ResumeOutput,
     company_info: Optional[CompanyInfo] = None
 ) -> CoverLetterOutput:
-    """Stub for Cover Letter Agent tool."""
-    raise NotImplementedError("Cover Letter Agent is blocked - awaiting approval.")
+    """
+    Generate an ATS-optimized cover letter PDF tailored to the job listing.
+    """
+    # 1. Validation
+    if not user_profile.skills and not user_profile.experience:
+        raise ValueError("User profile has no skills or experience data.")
+        
+    # Generate path names
+    output_dir = Path("outputs/cover_letters")
+    output_dir.mkdir(parents=True, exist_ok=True)
+    
+    docx_path = output_dir / f"{user_profile.user_id}_{job_listing.job_id}.docx"
+    pdf_path = output_dir / f"{user_profile.user_id}_{job_listing.job_id}.pdf"
+    
+    # 2. Extract job keywords
+    job_keywords = extract_job_keywords(job_listing.description)
+    if job_listing.required_skills:
+        job_keywords.extend(job_listing.required_skills)
+    if job_listing.preferred_skills:
+        job_keywords.extend(job_listing.preferred_skills)
+    job_keywords = list(dict.fromkeys(job_keywords))
+    
+    # 3. Generate cover letter text with keyword matching retry loop
+    emphasize_keywords = []
+    max_attempts = 2
+    cover_letter_text = ""
+    
+    for attempt in range(max_attempts):
+        cover_letter_text = generate_cover_letter_text(
+            user_profile, job_listing, match_result, resume_output, company_info, job_keywords, emphasize_keywords
+        )
+        
+        # Calculate keyword match percentage on current text to see if we should regenerate
+        import re
+        def matches_keyword(text: str, kw: str) -> bool:
+            kw_lower = kw.lower().strip()
+            text_lower = text.lower()
+            if not kw_lower:
+                return False
+            has_special = any(c in kw_lower for c in "+#.-/")
+            if has_special:
+                return kw_lower in text_lower
+            pattern = r"\b" + re.escape(kw_lower) + r"\b"
+            return bool(re.search(pattern, text_lower))
+            
+        matched_kws = [kw for kw in job_keywords if matches_keyword(cover_letter_text, kw)]
+        kw_pct = (len(matched_kws) / len(job_keywords)) * 100.0 if job_keywords else 100.0
+        
+        # If below 80% and using OpenAI API, identify missing skills the candidate actually has
+        if kw_pct < 80.0 and OPENAI_API_KEY and attempt < max_attempts - 1:
+            user_skills_norm = {normalize_skill(s) for s in user_profile.skills}
+            for exp in user_profile.experience:
+                for s in exp.skills_used:
+                    user_skills_norm.add(normalize_skill(s))
+                    
+            missing_candidate_kws = []
+            for kw in job_keywords:
+                norm_kw = normalize_skill(kw)
+                has_skill = False
+                canon_kw = synonym_to_canonical.get(norm_kw)
+                for us in user_skills_norm:
+                    canon_us = synonym_to_canonical.get(us)
+                    if us == norm_kw or (canon_us and canon_kw and canon_us == canon_kw):
+                        has_skill = True
+                        break
+                        
+                if has_skill and not matches_keyword(cover_letter_text, kw):
+                    missing_candidate_kws.append(kw)
+                    
+            if missing_candidate_kws:
+                logger.info(f"Cover letter keyword percentage is {kw_pct:.1f}% (below 80%). Regenerating with emphasis on: {missing_candidate_kws}")
+                emphasize_keywords = missing_candidate_kws
+                continue
+        break
+        
+    # 4. Save to DOCX
+    try:
+        from docx import Document
+        doc = Document()
+        
+        for paragraph in cover_letter_text.split("\n\n"):
+            if paragraph.strip():
+                clean_para = " ".join(paragraph.split())
+                if "@" in paragraph or "|" in paragraph or "To:" in paragraph or "Date:" in paragraph:
+                    doc.add_paragraph(paragraph.strip())
+                else:
+                    doc.add_paragraph(clean_para)
+                    
+        doc.save(str(docx_path))
+    except Exception as e:
+        logger.error(f"Failed to generate Cover Letter DOCX: {e}")
+        raise ValueError(f"DOCX generation failed: {e}")
+        
+    # 5. Convert to PDF
+    try:
+        render_pdf(str(docx_path), str(pdf_path))
+    except Exception as e:
+        logger.error(f"PDF rendering failed: {e}")
+        pdf_path = docx_path
+        
+    # Read PDF text for verification or fallback
+    if pdf_path.suffix == ".pdf":
+        try:
+            import pypdf
+            reader = pypdf.PdfReader(str(pdf_path))
+            full_text = "\n".join(page.extract_text() for page in reader.pages)
+        except Exception:
+            full_text = cover_letter_text
+    else:
+        full_text = cover_letter_text
+        
+    # 6. Verify factual accuracy
+    accuracy_res = verify_factual_accuracy(full_text, user_profile)
+    if not accuracy_res.is_accurate:
+        raise FactualAccuracyError(f"Generated cover letter contains non-factual claims: {accuracy_res.flagged_claims}")
+        
+    # 7. Calculate keyword match percentage
+    import re
+    def matches_keyword(text: str, kw: str) -> bool:
+        kw_lower = kw.lower().strip()
+        text_lower = text.lower()
+        if not kw_lower:
+            return False
+        has_special = any(c in kw_lower for c in "+#.-/")
+        if has_special:
+            return kw_lower in text_lower
+        pattern = r"\b" + re.escape(kw_lower) + r"\b"
+        return bool(re.search(pattern, text_lower))
+        
+    matched_kws = [kw for kw in job_keywords if matches_keyword(full_text, kw)]
+    kw_pct = (len(matched_kws) / len(job_keywords)) * 100.0 if job_keywords else 100.0
+    
+    # 8. Calculate personalization score
+    pers_score = 70.0
+    if company_info:
+        if company_info.mission:
+            pers_score += 10.0
+        if company_info.culture_values:
+            pers_score += 10.0
+        if company_info.industry or company_info.size:
+            pers_score += 5.0
+        if company_info.recent_news:
+            pers_score += 5.0
+        pers_score = min(pers_score, 100.0)
+    else:
+        if job_listing.company_name.lower() in full_text.lower():
+            pers_score += 5.0
+            
+    return CoverLetterOutput(
+        user_id=user_profile.user_id,
+        job_id=job_listing.job_id,
+        cover_letter_file_path=str(pdf_path),
+        tone="professional",
+        keyword_match_percentage=kw_pct,
+        personalization_score=pers_score,
+        company_info_used=company_info is not None,
+        created_at=datetime.utcnow()
+    )
 

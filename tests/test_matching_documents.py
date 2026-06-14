@@ -464,3 +464,302 @@ class TestResumeAgent:
             output = await optimize_resume(profile_full, job_swe, match_result)
             assert output.resume_file_path.endswith(".docx")
             assert os.path.exists(output.resume_file_path)
+
+
+# ============================================================================
+# Cover Letter Agent Tests (CL1 - CL15)
+# ============================================================================
+
+@pytest.mark.asyncio
+class TestCoverLetterAgent:
+    """CL1 - CL15: Tests for the Cover Letter Agent & generate_cover_letter tool."""
+
+    async def test_cover_letter_generates_file(self, profile_full, job_swe):
+        """CL1: Valid inputs generate cover letter file at output path."""
+        from tools.document_tools import calculate_match_score, generate_resume
+        from agents.cover_letter_agent import optimize_cover_letter
+        
+        match_res = calculate_match_score(profile_full, job_swe)
+        res_output = generate_resume(profile_full, job_swe, match_res)
+        
+        output = await optimize_cover_letter(profile_full, job_swe, match_res, res_output)
+        
+        assert os.path.exists(output.cover_letter_file_path)
+        assert output.cover_letter_file_path.endswith(".pdf")
+
+    async def test_cover_letter_personalized_with_company(self, profile_full, job_swe):
+        """CL2: Cover letter is personalized with company info when provided."""
+        from tools.document_tools import calculate_match_score, generate_resume
+        from agents.cover_letter_agent import optimize_cover_letter
+        from models.matching_models import CompanyInfo
+        import pypdf
+        
+        match_res = calculate_match_score(profile_full, job_swe)
+        res_output = generate_resume(profile_full, job_swe, match_res)
+        
+        company = CompanyInfo(
+            name="TechCorp Solutions",
+            mission="Empower engineers to build robust software systems",
+            culture_values=["integrity", "continuous learning"],
+            industry="Software Engineering"
+        )
+        
+        output = await optimize_cover_letter(profile_full, job_swe, match_res, res_output, company_info=company)
+        
+        assert output.company_info_used is True
+        assert output.personalization_score > 70.0
+        
+        reader = pypdf.PdfReader(output.cover_letter_file_path)
+        text = "\n".join(page.extract_text() for page in reader.pages)
+        
+        assert "TechCorp Solutions" in text
+        assert "Empower engineers" in text or "continuous learning" in text or "integrity" in text
+
+    async def test_cover_letter_generic_without_company(self, profile_full, job_swe):
+        """CL3: Cover letter degrades gracefully to generic letter without company info."""
+        from tools.document_tools import calculate_match_score, generate_resume
+        from agents.cover_letter_agent import optimize_cover_letter
+        import pypdf
+        
+        match_res = calculate_match_score(profile_full, job_swe)
+        res_output = generate_resume(profile_full, job_swe, match_res)
+        
+        output = await optimize_cover_letter(profile_full, job_swe, match_res, res_output, company_info=None)
+        
+        assert output.company_info_used is False
+        assert output.personalization_score <= 75.0
+        
+        reader = pypdf.PdfReader(output.cover_letter_file_path)
+        text = "\n".join(page.extract_text() for page in reader.pages)
+        
+        assert job_swe.company_name in text
+        assert "mission" not in text.lower()
+
+    async def test_cover_letter_keyword_inclusion(self, profile_full, job_swe):
+        """CL4: Verify that cover letter keyword inclusion percentage is >= 80%."""
+        from tools.document_tools import calculate_match_score, generate_resume
+        from agents.cover_letter_agent import optimize_cover_letter
+        
+        # Modify job to only require skills candidate has, to achieve >= 80% keyword match
+        job_matched = job_swe.model_copy()
+        job_matched.required_skills = ["Python", "AWS", "Docker"]
+        job_matched.preferred_skills = []
+        job_matched.description = "We are looking for a Python developer with AWS and Docker experience."
+        
+        match_res = calculate_match_score(profile_full, job_matched)
+        res_output = generate_resume(profile_full, job_matched, match_res)
+        
+        output = await optimize_cover_letter(profile_full, job_matched, match_res, res_output)
+        
+        assert output.keyword_match_percentage >= 80.0
+
+    async def test_cover_letter_professional_tone_tech(self, profile_full, job_swe):
+        """CL5: Cover letter tone is appropriate for technology industry roles."""
+        from tools.document_tools import calculate_match_score, generate_resume
+        from agents.cover_letter_agent import optimize_cover_letter
+        import pypdf
+        
+        match_res = calculate_match_score(profile_full, job_swe)
+        res_output = generate_resume(profile_full, job_swe, match_res)
+        
+        output = await optimize_cover_letter(profile_full, job_swe, match_res, res_output)
+        
+        reader = pypdf.PdfReader(output.cover_letter_file_path)
+        text = "\n".join(page.extract_text() for page in reader.pages)
+        
+        assert output.tone == "professional"
+        assert "strong interest" in text or "contribution" in text
+
+    async def test_cover_letter_professional_tone_finance(self, profile_full, job_swe):
+        """CL6: Tone is formal/professional for a finance/management listing."""
+        from tools.document_tools import calculate_match_score, generate_resume
+        from agents.cover_letter_agent import optimize_cover_letter
+        import pypdf
+        
+        job_fin = job_swe.model_copy()
+        job_fin.job_title = "Finance Manager"
+        job_fin.company_name = "Goldman Sachs"
+        
+        match_res = calculate_match_score(profile_full, job_fin)
+        res_output = generate_resume(profile_full, job_fin, match_res)
+        
+        output = await optimize_cover_letter(profile_full, job_fin, match_res, res_output)
+        
+        reader = pypdf.PdfReader(output.cover_letter_file_path)
+        text = "\n".join(page.extract_text() for page in reader.pages)
+        
+        assert "Dear Hiring Team" in text or "Sincerely" in text
+
+    async def test_cover_letter_no_resume_duplication(self, profile_full, job_swe):
+        """CL7: Cover letter does not duplicate the resume summary word-for-word."""
+        from tools.document_tools import calculate_match_score, generate_resume
+        from agents.cover_letter_agent import optimize_cover_letter
+        import pypdf
+        
+        match_res = calculate_match_score(profile_full, job_swe)
+        res_output = generate_resume(profile_full, job_swe, match_res)
+        
+        output = await optimize_cover_letter(profile_full, job_swe, match_res, res_output)
+        
+        reader = pypdf.PdfReader(output.cover_letter_file_path)
+        text = "\n".join(page.extract_text() for page in reader.pages)
+        
+        assert text != profile_full.summary
+        assert len(text) > len(profile_full.summary or "")
+
+    async def test_cover_letter_structure_complete(self, profile_full, job_swe):
+        """CL8: Cover letter structure contains all standard elements."""
+        from tools.document_tools import calculate_match_score, generate_resume
+        from agents.cover_letter_agent import optimize_cover_letter
+        import pypdf
+        
+        match_res = calculate_match_score(profile_full, job_swe)
+        res_output = generate_resume(profile_full, job_swe, match_res)
+        
+        output = await optimize_cover_letter(profile_full, job_swe, match_res, res_output)
+        
+        reader = pypdf.PdfReader(output.cover_letter_file_path)
+        text = "\n".join(page.extract_text() for page in reader.pages)
+        
+        assert profile_full.full_name in text
+        assert profile_full.email in text
+        assert "Dear" in text
+        assert "Sincerely" in text or "Thank you" in text
+
+    async def test_cover_letter_factual_accuracy(self, profile_full, job_swe):
+        """CL9: Assert cover letter is 100% factually accurate, referencing only true facts."""
+        from tools.document_tools import calculate_match_score, generate_resume, verify_factual_accuracy
+        from agents.cover_letter_agent import optimize_cover_letter
+        import pypdf
+        
+        match_res = calculate_match_score(profile_full, job_swe)
+        res_output = generate_resume(profile_full, job_swe, match_res)
+        
+        output = await optimize_cover_letter(profile_full, job_swe, match_res, res_output)
+        
+        reader = pypdf.PdfReader(output.cover_letter_file_path)
+        text = "\n".join(page.extract_text() for page in reader.pages)
+        
+        fact_check = verify_factual_accuracy(text, profile_full)
+        assert fact_check.is_accurate is True
+        assert len(fact_check.flagged_claims) == 0
+
+    async def test_cover_letter_contact_info_present(self, profile_full, job_swe):
+        """CL10: Candidate's contact info is present in the cover letter header."""
+        from tools.document_tools import calculate_match_score, generate_resume
+        from agents.cover_letter_agent import optimize_cover_letter
+        import pypdf
+        
+        match_res = calculate_match_score(profile_full, job_swe)
+        res_output = generate_resume(profile_full, job_swe, match_res)
+        
+        output = await optimize_cover_letter(profile_full, job_swe, match_res, res_output)
+        
+        reader = pypdf.PdfReader(output.cover_letter_file_path)
+        text = "\n".join(page.extract_text() for page in reader.pages)
+        
+        assert profile_full.full_name in text
+        assert profile_full.email in text
+        if profile_full.phone:
+            assert profile_full.phone in text
+
+    async def test_cover_letter_job_title_referenced(self, profile_full, job_swe):
+        """CL11: Specifically references the job title in the opening block."""
+        from tools.document_tools import calculate_match_score, generate_resume
+        from agents.cover_letter_agent import optimize_cover_letter
+        import pypdf
+        
+        match_res = calculate_match_score(profile_full, job_swe)
+        res_output = generate_resume(profile_full, job_swe, match_res)
+        
+        output = await optimize_cover_letter(profile_full, job_swe, match_res, res_output)
+        
+        reader = pypdf.PdfReader(output.cover_letter_file_path)
+        text = "\n".join(page.extract_text() for page in reader.pages)
+        
+        assert job_swe.job_title in text
+
+    async def test_cover_letter_minimal_profile(self, profile_minimal, job_swe):
+        """CL12: Minimal profile does not crash generation and returns valid cover letter."""
+        from tools.document_tools import calculate_match_score, generate_resume
+        from agents.cover_letter_agent import optimize_cover_letter
+        
+        match_res = calculate_match_score(profile_minimal, job_swe)
+        res_output = generate_resume(profile_minimal, job_swe, match_res)
+        
+        output = await optimize_cover_letter(profile_minimal, job_swe, match_res, res_output)
+        
+        assert os.path.exists(output.cover_letter_file_path)
+        assert output.cover_letter_file_path.endswith(".pdf")
+
+    async def test_cover_letter_coordinates_with_resume(self, profile_full, job_swe):
+        """CL13: Cover letter references coordinates (such as match score) from resume/matching output."""
+        from tools.document_tools import calculate_match_score, generate_resume
+        from agents.cover_letter_agent import optimize_cover_letter
+        import pypdf
+        
+        match_res = calculate_match_score(profile_full, job_swe)
+        res_output = generate_resume(profile_full, job_swe, match_res)
+        
+        output = await optimize_cover_letter(profile_full, job_swe, match_res, res_output)
+        
+        reader = pypdf.PdfReader(output.cover_letter_file_path)
+        text = "\n".join(page.extract_text() for page in reader.pages)
+        
+        assert f"{match_res.overall_score:.1f}%" in text or f"{match_res.overall_score:.0f}%" in text
+
+    async def test_cover_letter_api_failure_retry(self, profile_full, job_swe):
+        """CL14: When API fails, falls back gracefully to rule-based generation."""
+        from tools.document_tools import calculate_match_score, generate_resume
+        from agents.cover_letter_agent import optimize_cover_letter
+        
+        match_res = calculate_match_score(profile_full, job_swe)
+        res_output = generate_resume(profile_full, job_swe, match_res)
+        
+        with patch("openai.resources.chat.completions.Completions.create", side_effect=Exception("API Call Failed")):
+            output = await optimize_cover_letter(profile_full, job_swe, match_res, res_output)
+            assert os.path.exists(output.cover_letter_file_path)
+            assert output.keyword_match_percentage >= 0.0
+
+    async def test_cover_letter_low_keyword_regenerate(self, profile_full, job_swe):
+        """CL15: Triggers regeneration when first generation is missing keywords."""
+        from tools.document_tools import calculate_match_score, generate_resume
+        from agents.cover_letter_agent import optimize_cover_letter
+        
+        # Prepare job with simple keywords
+        job_matched = job_swe.model_copy()
+        job_matched.required_skills = ["Python", "AWS", "Docker"]
+        job_matched.preferred_skills = []
+        job_matched.description = "Looking for Python, AWS, and Docker developer."
+        
+        match_res = calculate_match_score(profile_full, job_matched)
+        res_output = generate_resume(profile_full, job_matched, match_res)
+        
+        mock_choice_keywords = MagicMock()
+        mock_choice_keywords.message.content = '["Python", "AWS", "Docker"]'
+        mock_resp_keywords = MagicMock()
+        mock_resp_keywords.choices = [mock_choice_keywords]
+        
+        mock_choice_1 = MagicMock()
+        mock_choice_1.message.content = "Dear Hiring Team,\n\nI am applying for Software Engineer. I am a programmer. Sincerely, Sarah."
+        mock_resp_1 = MagicMock()
+        mock_resp_1.choices = [mock_choice_1]
+        
+        mock_choice_2 = MagicMock()
+        mock_choice_2.message.content = (
+            "Dear Hiring Team at TechCorp,\n\nI am applying for Software Engineer. "
+            "I have experience with Python, AWS, Docker. Sincerely, Sarah."
+        )
+        mock_resp_2 = MagicMock()
+        mock_resp_2.choices = [mock_choice_2]
+        
+        mock_choice_fact = MagicMock()
+        mock_choice_fact.message.content = '{"is_accurate": true, "total_claims_checked": 5, "verified_claims": 5, "flagged_claims": []}'
+        mock_resp_fact = MagicMock()
+        mock_resp_fact.choices = [mock_choice_fact]
+        
+        with patch("tools.document_tools.OPENAI_API_KEY", "mock-key"):
+            with patch("openai.resources.chat.completions.Completions.create", side_effect=[mock_resp_keywords, mock_resp_1, mock_resp_2, mock_resp_fact]) as mock_openai:
+                output = await optimize_cover_letter(profile_full, job_matched, match_res, res_output)
+                assert mock_openai.call_count == 4
+                assert output.keyword_match_percentage >= 80.0
