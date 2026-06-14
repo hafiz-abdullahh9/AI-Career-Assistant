@@ -1,87 +1,182 @@
-# AI Career Assistant System
+# AI-Based Career Assistant System
 
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+## Overview
 
-## Getting Started
+AI-Based Career Assistant System is an intelligent multi-agent platform designed to automate job discovery, application optimization, and interview preparation for students, graduates, career changers, and professionals. The platform leverages AI-powered agents to streamline the complete job application lifecycle, from job collection to interview readiness.
 
-First, run the development server:
+## Features
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+### Job Discovery and Verification
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+* Multi-platform job collection from LinkedIn and Indeed
+* Duplicate and fake job detection
+* Expired listing filtering
+* Job verification and validation
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### Profile and CV Management
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+* CV upload and parsing (PDF, DOCX, TXT)
+* Skill extraction and profiling
+* Experience and education analysis
+* User profile management
 
----
+### AI-Powered Recommendations
 
-# Member 2 — Job Scraping & Verification Engineer
+* Compatibility scoring
+* Personalized job recommendations
+* Career goal alignment
+* Skill matching analysis
 
-Branch: `feature/job-scraping-verification`
+### Resume and Cover Letter Generation
 
-### Overview
+* ATS-optimized resume generation
+* Personalized cover letter creation
+* Keyword optimization
+* Job-specific customization
 
-This component provides two AI-powered agents for the Career Assistant System:
+### Automated Applications
 
-1. **Job Scraping Agent** (`/agents/job_scraping_agent.py`) — Collects job/internship listings from LinkedIn and Indeed
-2. **Job Verification Agent** (`/agents/job_verification_agent.py`) — Validates, deduplicates, and quality-scores listings
+* Email-based application submission
+* Web-form automation
+* Application tracking and monitoring
+* Submission status management
 
-### Project Structure
+### Career Development
 
-```
-├── agents/
-│   ├── __init__.py
-│   ├── job_scraping_agent.py      # Job Scraping Agent
-│   └── job_verification_agent.py  # Job Verification Agent
-├── tools/
-│   ├── __init__.py
-│   ├── scraping_tools.py          # Indeed + LinkedIn scraping tools
-│   └── verification_tools.py      # Company verification, dedup, flagging
-├── tests/
-│   ├── __init__.py
-│   └── test_scraping_verification.py  # unit tests
-├── config/
-│   ├── __init__.py
-│   └── settings.py                # Configuration (env vars, no hardcoded keys)
-├── docs/
-├── requirements.txt
-├── .env.example
-├── .gitignore
-└── README.md
-```
+* Skill gap analysis
+* Learning roadmap generation
+* AI mock interviews
+* Interview feedback and improvement suggestions
 
-### Setup
+## System Architecture
 
-```bash
-pip install -r requirements.txt
-cp .env.example .env  # Add your API keys
-```
+### Frontend
 
-### Model
+* React.js / Vue.js
+* Responsive web interface
+* User dashboard
+* Application tracker
+* Interview simulator
 
-- **gpt-4o-mini** — Do NOT upgrade without lead approval
+### Backend
 
-### Key Features
+* API Gateway
+* Authentication Services
+* AI Orchestration Layer
+* Application Processing Services
+* Notification Services
 
-- Multi-platform scraping (Indeed + LinkedIn)
-- Unique `job_id` per record with field standardisation across platforms
-- Exponential backoff retry on API failures
-- Rate limiting with queue-based retry scheduling
-- Incomplete data flagged for manual review — pipeline never crashes
-- Cross-platform duplicate detection (URL, fingerprint, fuzzy matching)
-- Company legitimacy verification via heuristics
-- Expired posting detection (posted_date vs deadline comparison)
-- Suspicious listing flagging (payment requests, spelling errors, invalid links)
-- Verified status output: `verified` / `rejected` / `flagged_for_review`
-- All API credentials loaded from environment variables
-- All outputs are valid JSON — no unhandled exceptions
-- ≥ 95% accuracy filtering invalid listings (SRS 5.3)
+### Databases
+
+* PostgreSQL
+* MongoDB
+* Redis
+* Elasticsearch
+
+### AI Agents
+
+* Job Scraping Agent
+* Job Verification Agent
+* Resume Optimization Agent
+* Cover Letter Agent
+* Job Matching Agent
+* Skill Gap Analysis Agent
+* Interview Preparation Agent
+* Application Automation Agent
+
+## Technology Stack
+
+| Layer          | Technologies               |
+| -------------- | -------------------------- |
+| Frontend       | React.js / Vue.js          |
+| Backend        | Node.js / Python           |
+| Database       | PostgreSQL, MongoDB, Redis |
+| Search Engine  | Elasticsearch              |
+| Automation     | Selenium WebDriver         |
+| AI Services    | OpenAI APIs                |
+| Email Services | Gmail SMTP                 |
+
+## Core Functionalities
+
+1. Job Collection and Verification
+2. CV Analysis
+3. Job Matching
+4. Resume Optimization
+5. ATS Enhancement
+6. Cover Letter Generation
+7. Automated Application Submission
+8. Application Tracking
+9. Skill Gap Analysis
+10. Mock Interview Preparation
+11. Profile Maintenance
+
+## Non-Functional Requirements
+
+### Performance
+
+* Job search response time: < 3 seconds
+* Resume generation: < 30 seconds
+* Cover letter generation: < 45 seconds
+* Dashboard load time: < 2 seconds
+
+### Security
+
+* AES-256 encryption
+* HTTPS/TLS 1.3
+* Multi-factor authentication
+* Role-based access control
+
+### Reliability
+
+* 99.5% uptime target
+* Automated backups
+* Disaster recovery support
+
+### Scalability
+
+* Microservices architecture
+* Horizontal database scaling
+* Support for 100,000+ active users
+
+## User Workflow
+
+1. Register Account
+2. Upload CV
+3. Analyze Profile
+4. Receive Job Recommendations
+5. Generate Resume & Cover Letter
+6. Submit Applications
+7. Track Progress
+8. Prepare for Interviews
+
+## Future Enhancements
+
+### Short-Term
+
+* Video interview integration
+* LinkedIn profile synchronization
+* Mobile applications
+
+### Medium-Term
+
+* Salary negotiation assistant
+* Networking recommendations
+* Multi-language support
+
+### Long-Term
+
+* Blockchain credential verification
+* Predictive career analytics
+* Virtual AI career coach
+
+## Security and Compliance
+
+* GDPR Compliance
+* CCPA Compliance
+* Secure Data Handling
+* Responsible AI Practices
+* Regular Security Audits
+
+## License
+
+This project follows the repository license and contribution guidelines.
